@@ -1,0 +1,8 @@
+[Unit]
+Description=Swap file for the WFM Droplet
+
+[Swap]
+What=/swapfile
+
+[Install]
+WantedBy=swap.target

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Portal corporativo de Impulsa 365 para la gestión segura de solicitudes operativas WFM del servicio ENTEL.">
+    <meta name="application-name" content="Sistema de tickets WFM ENTEL">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>Sistemas de tickets WFM ENTEL</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=7">
+</head>
+
+<body>
+    <section class="boot-screen" id="bootScreen" role="status" aria-live="polite">
+        <img class="boot-logo" src="logo-entel.png" alt="ENTEL">
+        <span class="boot-spinner" aria-hidden="true"></span>
+        <p>Verificando sesión...</p>
+    </section>
+    <section class="auth-screen" id="authScreen">
+        <div class="auth-card">
+            <div class="brand"><img class="brand-logo" src="logo-entel.png" alt="ENTEL"><span>Sistemas de tickets<br>WFM
+                    ENTEL</span></div><span class="eyebrow">Acceso seguro</span>
+            <h1>Ingresa a tu operación</h1>
+            <p>Usa el correo y la contraseña asignados por el administrador.</p>
+            <form id="loginForm"><label class="field"><span>Correo electrónico</span><input type="email" id="loginEmail"
+                        autocomplete="email" required></label><label class="field"><span>Contraseña</span><span
+                        class="password-input-wrap"><input type="password" id="loginPassword"
+                            autocomplete="current-password" required><button class="password-visibility" type="button"
+                            data-password-target="loginPassword" aria-label="Mostrar contraseña"
+                            title="Mostrar contraseña"><i data-lucide="eye"></i></button></span></label><button
+                    class="primary-button" type="submit"><i data-lucide="log-in"></i> Ingresar</button><small
+                    id="loginMessage"></small></form>
+        </div>
+    </section>
+    <section class="auth-screen" id="requiredPasswordScreen">
+        <div class="auth-card">
+            <div class="brand"><img class="brand-logo" src="logo-entel.png" alt="ENTEL"><span>Sistemas de tickets<br>WFM
+                    ENTEL</span></div>
+            <span class="eyebrow">Primer acceso</span>
+            <h1>Crea tu contraseña personal</h1>
+            <p>Debes reemplazar la contraseña temporal antes de ingresar al panel.</p>
+            <form id="requiredPasswordForm" novalidate>
+                <label class="field"><span>Nueva contraseña</span><span class="password-input-wrap"><input
+                            type="password" id="requiredPassword" autocomplete="new-password" minlength="10"
+                            maxlength="200" required><button class="password-visibility" type="button"
+                            data-password-target="requiredPassword" aria-label="Mostrar nueva contraseña"
+                            title="Mostrar contraseña"><i data-lucide="eye"></i></button></span></label>
+                <label class="field"><span>Confirmar contraseña</span><span class="password-input-wrap"><input
+                            type="password" id="requiredPasswordConfirmation" autocomplete="new-password" minlength="10"
+                            maxlength="200" required><button class="password-visibility" type="button"
+                            data-password-target="requiredPasswordConfirmation"
+                            aria-label="Mostrar confirmación de contraseña" title="Mostrar contraseña"><i
+                                data-lucide="eye"></i></button></span></label>
+                <button class="primary-button" type="submit"><i data-lucide="key-round"></i> Guardar y
+                    continuar</button>
+                <button class="auth-secondary-button" type="button" id="requiredPasswordLogout">Cerrar sesión</button>
+                <small id="requiredPasswordMessage"></small>
+            </form>
+        </div>
+    </section>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand"><img class="brand-logo" src="logo-entel.png" alt="ENTEL"><span>Sistemas de tickets<br>WFM
+                    ENTEL</span></div>
+            <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-expanded="false"
+                aria-controls="sidebarNavigation" aria-label="Abrir menú"><i data-lucide="menu"></i></button>
+            <div class="workspace-label" id="workspaceLabel">OPERACIONES</div>
+            <nav id="sidebarNavigation">
+                <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i>
+                    Resumen</button>
+                <button class="nav-item" data-view="requests"><i data-lucide="inbox"></i> Solicitudes <span
+                        class="nav-count" id="navCount">0</span></button>
+                <button class="nav-item" data-view="wf"><i data-lucide="clipboard-check"></i> Vista WFM</button>
+                <button class="nav-item" data-view="new"><i data-lucide="plus-circle"></i> Nueva solicitud</button>
+            </nav>
+            <div class="sidebar-bottom">
+                <div class="workspace-note"><i data-lucide="shield-check"></i>
+                    <div><strong>Portal operativo</strong><span> Solicitudes trazables para WFM.</span></div>
+                </div>
+                <div class="user-chip" id="roleToggle"><span
+                        class="avatar">LM</span><span><strong>Usuario</strong><small>Rango</small></span></div><button
+                    class="logout-button" id="logoutButton"><i data-lucide="log-out"></i> Cerrar sesión</button>
+                <button class="password-button" id="passwordButton"><i data-lucide="key-round"></i> Cambiar
+                    contraseña</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div><span class="eyebrow">Centro de control</span>
+                    <h1 id="pageTitle">Resumen operativo</h1>
+                </div>
+                <div class="top-actions"><span class="live-status"><span></span> Sistema activo</span><button
+                        class="icon-button" title="Notificaciones"><i data-lucide="bell"></i></button><button
+                        class="primary-button" data-view="new"><i data-lucide="plus"></i> Nueva solicitud</button></div>
+            </header>
+
+            <section id="dashboardView" class="view active-view">
+                <div class="welcome-row">
+                    <div>
+                        <h2>Buen día, Laura.</h2>
+                        <p>Revisa el pulso de las solicitudes de tu operación.</p>
+                    </div><span class="date-badge" id="todayLabel"></span>
+                </div>
+                <div class="stats-grid">
+                    <article class="stat-card accent-coral"><span>Por revisar</span><strong
+                            id="pendingStat">0</strong><small><i data-lucide="clock-3"></i> Requieren atención</small>
+                    </article>
+                    <article class="stat-card accent-blue"><span>Aprobadas este mes</span><strong
+                            id="approvedStat">0</strong><small><i data-lucide="check-circle-2"></i> Flujo
+                            saludable</small></article>
+                    <article class="stat-card accent-yellow"><span>Excepciones</span><strong
+                            id="exceptionStat">0</strong><small><i data-lucide="triangle-alert"></i> Revisión
+                            especial</small></article>
+                    <article class="stat-card accent-green"><span>Horas solicitadas</span><strong
+                            id="hoursStat">0h</strong><small><i data-lucide="timer"></i> En el periodo actual</small>
+                    </article>
+                </div>
+                <div class="content-grid">
+                    <section class="panel recent-panel">
+                        <div class="panel-heading">
+                            <div><span class="eyebrow">Actividad reciente</span>
+                                <h3>Solicitudes que necesitan contexto</h3>
+                            </div><button class="text-button" data-view="requests">Ver todas <i
+                                    data-lucide="arrow-up-right"></i></button>
+                        </div>
+                        <div id="recentList"></div>
+                    </section>
+                    <section class="panel rules-panel">
+                        <div class="panel-heading">
+                            <div><span class="eyebrow">Reglas activas</span>
+                                <h3>La operación, en claro</h3>
+                            </div><i class="rule-icon" data-lucide="shield-check"></i>
+                        </div>
+                        <div class="rule"><span class="rule-number">01</span>
+                            <div><strong>Cambios de horario</strong>
+                                <p>Anticipación mínima de 48 horas. Si no se cumple, adjunta soporte de urgencia.</p>
+                            </div>
+                        </div>
+                        <div class="rule"><span class="rule-number">02</span>
+                            <div><strong>Compensados</strong>
+                                <p>Solo fechas futuras. Recepción hasta las 15:00 del día en curso.</p>
+                            </div>
+                        </div>
+                        <div class="rule"><span class="rule-number">03</span>
+                            <div><strong>Retroactivos</strong>
+                                <p>No se aceptan. Puedes solicitar una excepción para revisión del jefe de área.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <section class="panel wfm-dashboard" id="wfmDashboard">
+                    <div class="panel-heading">
+                        <div><span class="eyebrow">Panel WFM</span>
+                            <h3>Comportamiento de solicitudes</h3>
+                        </div><i class="rule-icon" data-lucide="chart-no-axes-combined"></i>
+                    </div>
+                    <div class="wfm-dashboard-grid">
+                        <div><strong class="chart-title">Solicitudes por usuario</strong>
+                            <div id="requestsByUser" class="bar-chart"></div>
+                        </div>
+                        <div><strong class="chart-title">Motivos más frecuentes</strong>
+                            <div id="requestsByReason" class="bar-chart"></div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="requestsView" class="view">
+                <div class="view-toolbar">
+                    <div><span class="eyebrow">Bandeja de trabajo</span>
+                        <h2>Todas las solicitudes</h2>
+                    </div>
+                    <div class="filters"><select id="ownerFilter">
+                            <option value="all">Todos los tickets</option>
+                            <option value="mine">Mis tickets</option>
+                        </select><select id="statusFilter">
+                            <option value="all">Todos los estados</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="in_review">En revisión</option>
+                            <option value="resolved">Resueltos</option>
+                            <option value="rejected">Rechazados</option>
+                            <option value="approved">Aprobadas antiguas</option>
+                        </select><select id="typeFilter">
+                            <option value="all">Todos los tipos</option>
+                            <option value="schedule_change">Cambio de horario</option>
+                            <option value="swap">Enroque</option>
+                            <option value="comp_time">Compensado</option>
+                            <option value="overtime">Horas extra</option>
+                            <option value="exception">Excepción</option>
+                        </select></div>
+                </div>
+                <section class="panel table-panel">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Solicitud</th>
+                                    <th>Usuario que solicita</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section id="newView" class="view">
+                <div class="form-layout">
+                    <div class="form-intro"><span class="eyebrow">Nuevo registro</span>
+                        <h2>Presenta una solicitud</h2>
+                        <p>La información queda trazable desde el envío hasta la decisión de WFM.</p>
+                        <div class="flow"><span class="flow-dot active"></span><span></span><span
+                                class="flow-dot"></span><span></span><span class="flow-dot"></span><small>Enviar
+                                <b>→</b> Revisar <b>→</b> Resolver</small></div>
+                    </div>
+                    <form class="panel request-form" id="requestForm">
+                        <div class="form-section"><span class="section-label">01 / Tipo de solicitud</span>
+                            <div class="type-picker"><label><input type="radio" name="type" value="schedule_change"
+                                        checked><span><i data-lucide="calendar-clock"></i><b>Cambio de
+                                            horario</b><small>Modificar un turno</small></span></label><label><input
+                                        type="radio" name="type" value="swap"><span><i
+                                            data-lucide="arrow-left-right"></i><b>Enroque</b><small>Intercambiar
+                                            turnos</small></span></label><label><input type="radio" name="type"
+                                        value="comp_time"><span><i
+                                            data-lucide="calendar-plus"></i><b>Compensado</b><small>Programar
+                                            descanso</small></span></label><label><input type="radio" name="type"
+                                        value="overtime"><span><i data-lucide="timer"></i><b>Horas
+                                            extra</b><small>Registrar horas</small></span></label><label><input
+                                        type="radio" name="type" value="exception"><span><i
+                                            data-lucide="file-warning"></i><b>Excepción</b><small>Solicitar revisión
+                                            especial</small></span></label></div>
+                        </div>
+                        <div class="form-section"><span class="section-label">02 / Detalle</span>
+                            <div class="field-grid"><label class="field"><span>Fecha del evento</span><input type="date"
+                                        id="eventDate" required></label><label class="field"><span>Empleado
+                                        involucrado</span><select id="employee">
+                                        <option>Laura Méndez</option>
+                                        <option>Andrés Ríos</option>
+                                        <option>Camila Torres</option>
+                                        <option>Diego Silva</option>
+                                    </select></label><label class="field time-field"><span>Desde</span><input
+                                        type="time" id="startTime"></label><label class="field time-field"><span>Hasta
+                                        (nuevo turno)</span><input type="time" id="endTime"></label><label
+                                    class="field full-field"><span>Motivo o
+                                        contexto</span><textarea id="reason" rows="3"
+                                        placeholder="Describe brevemente qué necesitas y por qué."></textarea></label><label
+                                    class="field full-field"><span>Evidencia <em>(opcional según el caso)</em></span>
+                                    <div class="file-drop"><i data-lucide="paperclip"></i><span id="fileLabel">Adjuntar
+                                            documento, imagen o soporte</span><input type="file" id="evidence"></div>
+                                </label>
+                                <p class="time-help" id="timeHelp"><i data-lucide="clock-3"></i> Las horas deben
+                                    colocarse en formato de 24 horas, por ejemplo 08:30 a 17:00.</p>
+                            </div>
+                            <div class="policy-alert" id="policyAlert"><i data-lucide="info"></i><span>Para un cambio
+                                    con menos de 48 horas de anticipación se requiere evidencia de la urgencia.</span>
+                            </div>
+                        </div>
+                        <div class="form-footer"><span><i data-lucide="lock-keyhole"></i> Solo tu equipo y WFM verán
+                                este
+                                registro.</span><button class="primary-button" type="submit"><i data-lucide="send"></i>
+                                Enviar solicitud</button></div>
+                    </form>
+                </div>
+            </section>
+            <section id="wfView" class="view">
+                <div class="view-toolbar">
+                    <div><span class="eyebrow">Mesa de revisión</span>
+                        <h2>Vista WFM</h2>
+                        <p class="view-subtitle">Revisa el detalle y registra una respuesta.</p>
+                    </div>
+                    <div class="wf-actions"><button class="secondary-button" id="exportTickets"><i
+                                data-lucide="download"></i> Descargar tickets</button><button class="primary-button"
+                            data-view="requests"><i data-lucide="list-filter"></i> Abrir
+                            bandeja</button></div>
+                </div>
+                <div class="wf-grid">
+                    <article class="wf-column">
+                        <header><span class="column-dot pending-dot"></span><strong>Pendientes</strong><b
+                                id="wfPendingCount">0</b></header>
+                        <div id="wfPendingList"></div>
+                    </article>
+                    <article class="wf-column">
+                        <header><span class="column-dot pending-dot"></span><strong>En revisión</strong><b
+                                id="wfIn_reviewCount">0</b></header>
+                        <div id="wfIn_reviewList"></div>
+                    </article>
+                    <article class="wf-column">
+                        <header><span class="column-dot approved-dot"></span><strong>Resueltos</strong><b
+                                id="wfResolvedCount">0</b></header>
+                        <div id="wfResolvedList"></div>
+                    </article>
+                    <article class="wf-column">
+                        <header><span class="column-dot rejected-dot"></span><strong>Rechazados</strong><b
+                                id="wfRejectedCount">0</b></header>
+                        <div id="wfRejectedList"></div>
+                    </article>
+                </div>
+                <section class="panel rules-editor static-rules" id="rulesEditor">
+                    <div class="panel-heading">
+                        <div><span class="eyebrow">Solo WFM</span>
+                            <h3>Permisos de envío por solicitud</h3>
+                        </div><i data-lucide="sliders-horizontal"></i>
+                    </div>
+                    <p>Configura qué rangos pueden crear cada tipo de ticket.</p>
+                    <div class="static-rule-grid">
+                        <div class="static-rule-head">
+                            <span>Solicitud</span>
+                            <span>Anticipación (h)</span>
+                            <span>Corte</span>
+                            <span>Evidencia</span>
+                            <span>Coordinación</span>
+                            <span>Supervisión</span>
+                        </div>
+                        <div class="static-rule-row" data-rule-key="schedule_change">
+                            <strong>Cambio de horario</strong>
+                            <input type="number" data-rule-prop="min_advance_hours" value="48">
+                            <input type="time" data-rule-prop="same_day_cutoff">
+                            <label><input type="checkbox" data-rule-prop="requires_evidence" checked>Sí</label>
+                            <label><input type="checkbox" data-rule-prop="coordinator_allowed" checked> Puede
+                                enviar</label>
+                            <label><input type="checkbox" data-rule-prop="supervisor_allowed" checked> Puede
+                                enviar</label>
+                        </div>
+                        <div class="static-rule-row" data-rule-key="swap">
+                            <strong>Enroque</strong>
+                            <input type="number" data-rule-prop="min_advance_hours" value="48">
+                            <input type="time" data-rule-prop="same_day_cutoff">
+                            <label><input type="checkbox" data-rule-prop="requires_evidence"> Sí</label>
+                            <label><input type="checkbox" data-rule-prop="coordinator_allowed" checked> Puede
+                                enviar</label>
+                            <label><input type="checkbox" data-rule-prop="supervisor_allowed" checked> Puede
+                                enviar</label>
+                        </div>
+                        <div class="static-rule-row" data-rule-key="comp_time"><strong>Compensado</strong><input
+                                type="number" data-rule-prop="min_advance_hours" value="0"><input type="time"
+                                data-rule-prop="same_day_cutoff" value="15:00"><label><input type="checkbox"
+                                    data-rule-prop="requires_evidence"> Sí</label><label><input type="checkbox"
+                                    data-rule-prop="coordinator_allowed" checked> Puede enviar</label><label><input
+                                    type="checkbox" data-rule-prop="supervisor_allowed"> Puede enviar</label></div>
+                        <div class="static-rule-row" data-rule-key="overtime"><strong>Horas extra</strong><input
+                                type="number" data-rule-prop="min_advance_hours" value="0"><input type="time"
+                                data-rule-prop="same_day_cutoff"><label><input type="checkbox"
+                                    data-rule-prop="requires_evidence"> Sí</label><label><input type="checkbox"
+                                    data-rule-prop="coordinator_allowed" checked> Puede enviar</label><label><input
+                                    type="checkbox" data-rule-prop="supervisor_allowed" checked> Puede enviar</label>
+                        </div>
+                        <div class="static-rule-row" data-rule-key="siop_validation"><strong>Validación
+                                SIOP</strong><input type="number" data-rule-prop="min_advance_hours" value="48"><input
+                                type="time" data-rule-prop="same_day_cutoff"><label><input type="checkbox"
+                                    data-rule-prop="requires_evidence" checked> Sí</label><label><input type="checkbox"
+                                    data-rule-prop="coordinator_allowed"> Puede enviar</label><label><input
+                                    type="checkbox" data-rule-prop="supervisor_allowed" checked> Puede enviar</label>
+                        </div>
+                        <div class="static-rule-row" data-rule-key="exception"><strong>Excepción</strong><input
+                                type="number" data-rule-prop="min_advance_hours" value="0"><input type="time"
+                                data-rule-prop="same_day_cutoff"><label><input type="checkbox"
+                                    data-rule-prop="requires_evidence" checked> Sí</label><label><input type="checkbox"
+                                    data-rule-prop="coordinator_allowed" checked> Puede enviar</label><label><input
+                                    type="checkbox" data-rule-prop="supervisor_allowed" checked> Puede enviar</label>
+                        </div>
+                    </div><button class="primary-button" id="saveStaticRules"><i data-lucide="save"></i> Guardar
+                        configuración</button><small id="staticRulesMessage"></small>
+                </section>
+            </section>
+        </main>
+    </div>
+    <div class="review-modal" id="reviewModal">
+        <div class="review-dialog"><button class="modal-close" id="closeReview" title="Cerrar"><i
+                    data-lucide="x"></i></button><span class="eyebrow">Detalle de solicitud</span>
+            <h2 id="reviewTitle">Solicitud</h2>
+            <div class="review-meta" id="reviewMeta"></div>
+            <div class="review-body" id="reviewBody"></div><label class="field"><span>Respuesta de WFM</span><textarea
+                    id="reviewComment" rows="4"
+                    placeholder="Escribe la respuesta o el motivo de la decisión."></textarea></label>
+            <div class="review-actions"><button class="review-action review-start" data-status="in_review">En
+                    revisión</button><button class="review-action review-resolve"
+                    data-status="resolved">Resolver</button><button class="review-action review-reject"
+                    data-status="rejected">Rechazar</button></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"><i data-lucide="check-circle-2"></i><span></span></div>
+    <script src="vendor/lucide.js?v=4"></script>
+    <script src="api-client.js?v=2"></script>
+    <script src="app.js?v=2"></script>
+    <script src="enhancements.js?v=9"></script>
+    <script src="api-app.js?v=7"></script>
+    <script src="ui-final.js?v=4"></script>
+</body>
+
+</html>

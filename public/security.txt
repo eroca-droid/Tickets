@@ -1,0 +1,4 @@
+Contact: mailto:eroca@impulsa365.com.pe
+Expires: 2027-09-02T00:00:00Z
+Preferred-Languages: es, en
+Canonical: https://134.209.214.88/.well-known/security.txt

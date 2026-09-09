@@ -1,0 +1,15 @@
+{
+	default_sni {$TLS_DEFAULT_SNI:134.209.214.88}
+	cert_issuer acme {
+		profile shortlived
+	}
+}
+
+{$SITE_ADDRESS:134.209.214.88} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy app:3000
+}

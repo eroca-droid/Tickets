@@ -1,0 +1,86 @@
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tickets_wfm}
+      POSTGRES_USER: ${POSTGRES_USER:-tickets_wfm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in .env}
+      TZ: ${APP_TIMEZONE:-America/Santiago}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - effective_cache_size=96MB
+      - -c
+      - max_connections=15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 192m
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PGHOST: database
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-tickets_wfm}
+      PGUSER: ${POSTGRES_USER:-tickets_wfm}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Santiago}
+      SESSION_HOURS: ${SESSION_HOURS:-12}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      UPLOAD_DIR: /app/storage/evidence
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      NODE_OPTIONS: --max-old-space-size=96
+    volumes:
+      - ./storage/evidence:/app/storage/evidence
+    depends_on:
+      database:
+        condition: service_healthy
+    mem_limit: 128m
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-134.209.214.88}
+      TLS_DEFAULT_SNI: ${TLS_DEFAULT_SNI:-134.209.214.88}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    mem_limit: 48m
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
