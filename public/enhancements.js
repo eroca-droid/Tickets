@@ -2188,7 +2188,7 @@ const demoRoles = [
         key: 'management',
         name: 'Gerencia',
         person: 'Jorge Pérez',
-        canReview: true
+        canReview: false
     },
 
     {

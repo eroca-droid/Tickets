@@ -514,7 +514,7 @@ function createApp({ pool, transaction }) {
         response.status(201).json({ data: created });
     });
 
-    app.patch('/api/data/requests', requireRole('wfm', 'management', 'superadmin'), async (request, response) => {
+    app.patch('/api/data/requests', requireRole('wfm', 'superadmin'), async (request, response) => {
         const id = Number(request.body?.filters?.id);
         const status = cleanText(request.body?.values?.status, 30);
         const comment = cleanText(request.body?.values?.review_comment, 4000, '');
