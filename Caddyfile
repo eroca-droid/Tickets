@@ -1,0 +1,21 @@
+{
+	default_sni {$TLS_DEFAULT_SNI:workdata360.com}
+}
+
+http://134.209.214.88 {
+	redir https://{$SITE_ADDRESS:workdata360.com}{uri} permanent
+}
+
+www.{$SITE_ADDRESS:workdata360.com} {
+	redir https://{$SITE_ADDRESS:workdata360.com}{uri} permanent
+}
+
+{$SITE_ADDRESS:workdata360.com} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy app:3000
+}
+

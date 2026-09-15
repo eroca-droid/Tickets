@@ -1,0 +1,31 @@
+{
+  "name": "seguimiento-tickets-wfm",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Sistema de seguimiento de tickets WFM con PostgreSQL",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "build:icons": "esbuild assets/lucide-entry.js --bundle --minify --format=iife --outfile=public/vendor/lucide.js",
+    "dev": "node --watch server/index.js",
+    "check": "node --check server/index.js && node --check server/app.js && node --check server/auth.js && node --check public/api-client.js && node --check public/api-app.js && node --check public/enhancements.js && node --check public/ui-final.js",
+    "test": "npm run check && node --test",
+    "user:create": "node scripts/create-user.js",
+    "users:import": "node scripts/import-users.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9",
+    "lucide": "^1.39.0"
+  }
+}

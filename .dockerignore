@@ -1,0 +1,9 @@
+.env
+.git
+.gitignore
+db/legacy-supabase
+node_modules
+npm-debug.log
+storage
+tests
+*.md

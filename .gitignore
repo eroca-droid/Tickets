@@ -1,0 +1,8 @@
+node_modules/
+.env
+.DS_Store
+backups/
+storage/evidence/*
+!storage/evidence/.gitkeep
+npm-debug.log*
+db/users-2026-09.tsv
