@@ -5,7 +5,7 @@ create extension if not exists pgcrypto;
 
 create type user_role as enum ('coordinator', 'supervisor', 'wfm', 'management', 'superadmin');
 create type request_type as enum ('schedule_change', 'swap', 'comp_time', 'overtime', 'siop_validation', 'exception');
-create type request_status as enum ('pending', 'in_review', 'resolved', 'approved', 'rejected', 'cancelled');
+create type request_status as enum ('pending', 'in_review', 'observed', 'approved', 'rejected');
 
 create table profiles (
     id uuid primary key default gen_random_uuid(),
@@ -129,7 +129,7 @@ create table sessions (
 create table evidence_uploads (
     path text primary key,
     uploaded_by uuid not null references profiles(id),
-    request_id bigint unique references requests(id) on delete cascade,
+    request_id bigint references requests(id) on delete cascade,
     original_name text not null,
     mime_type text not null,
     size_bytes integer not null check (size_bytes > 0),

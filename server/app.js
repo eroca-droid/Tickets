@@ -30,14 +30,12 @@ const REQUEST_TYPES = new Set([
 const REQUEST_STATUSES = new Set([
     'pending',
     'in_review',
-    'resolved',
+    'observed',
     'approved',
-    'rejected',
-    'cancelled'
+    'rejected'
 ]);
 const PERIOD_TYPES = new Set(['specific', 'current_week', 'month', 'weekend']);
 const EXCEPTION_ORIGINS = new Set(['coordinator', 'supervisor', 'agent']);
-const FINAL_STATUSES = new Set(['resolved', 'approved', 'rejected', 'cancelled']);
 const SAFE_UPLOAD_TYPES = new Set([
     'application/pdf',
     'application/msword',
@@ -348,18 +346,33 @@ function createApp({ pool, transaction }) {
         const columns = selectedColumns(table, request.query.select);
         const filters = parseFilters(table, request.query.filters);
         const orderColumn = request.query.order || '';
+
         if (orderColumn && !TABLES[table].orders.includes(orderColumn)) {
             throw new ApiError(400, 'El orden solicitado no está permitido.');
         }
 
         if (table === 'profiles') ensureProfileQueryAccess(request.user, filters);
+
+        if (
+            table === 'requests'
+            && ['coordinator', 'supervisor'].includes(request.user.role)
+        ) {
+            filters.requester_id = request.user.id;
+        }
+
         if (table === 'dotacion') filters.active = true;
 
-        const query = buildSelect(table, columns, filters, orderColumn, request.query.ascending === 'true');
+        const query = buildSelect(
+            table,
+            columns,
+            filters,
+            orderColumn,
+            request.query.ascending === 'true'
+        );
+
         const result = await pool.query(query);
         response.json({ data: result.rows });
     });
-
     app.post('/api/data/requests', async (request, response) => {
         const input = request.body?.values || {};
         const type = cleanText(input.type, 40);
@@ -514,35 +527,233 @@ function createApp({ pool, transaction }) {
         response.status(201).json({ data: created });
     });
 
-    app.patch('/api/data/requests', requireRole('wfm', 'superadmin'), async (request, response) => {
-        const id = Number(request.body?.filters?.id);
-        const status = cleanText(request.body?.values?.status, 30);
-        const comment = cleanText(request.body?.values?.review_comment, 4000, '');
-        if (!Number.isSafeInteger(id) || id <= 0 || !REQUEST_STATUSES.has(status) || status === 'pending') {
-            throw new ApiError(400, 'La actualización solicitada no es válida.');
+    app.patch(
+        '/api/data/requests',
+        requireRole('coordinator', 'supervisor', 'wfm', 'superadmin'),
+        async (request, response) => {
+            const id = Number(request.body?.filters?.id);
+            const status = cleanText(request.body?.values?.status, 30);
+            const comment = cleanText(request.body?.values?.review_comment, 4000, '');
+            const evidencePath = cleanText(request.body?.values?.evidence_path, 600, '');
+
+            if (
+                !Number.isSafeInteger(id)
+                || id <= 0
+                || !REQUEST_STATUSES.has(status)
+            ) {
+                throw new ApiError(400, 'La actualización solicitada no es válida.');
+            }
+
+            const isRequester = ['coordinator', 'supervisor'].includes(request.user.role);
+
+            if (isRequester && !comment) {
+                throw new ApiError(
+                    400,
+                    'La respuesta es obligatoria.'
+                );
+            }
+
+            const updated = await transaction(async client => {
+                const current = await client.query(
+                    `select *
+                 from requests
+                 where id = $1
+                 for update`,
+                    [id]
+                );
+
+                const requestRow = current.rows[0];
+
+                if (!requestRow) {
+                    throw new ApiError(404, 'La solicitud no existe.');
+                }
+
+                const previousStatus = requestRow.status;
+
+                /*
+                 * ==========================================
+                 * SUPERVISOR / COORDINADOR
+                 * ==========================================
+                 *
+                 * Solo pueden responder una solicitud observada
+                 * que ellos mismos hayan creado.
+                 */
+                if (isRequester) {
+                    if (previousStatus !== 'observed') {
+                        throw new ApiError(
+                            400,
+                            'Solo puedes responder solicitudes que estén observadas.'
+                        );
+                    }
+
+                    if (requestRow.requester_id !== request.user.id) {
+                        throw new ApiError(
+                            403,
+                            'Solo puedes responder tus propias solicitudes.'
+                        );
+                    }
+
+                    if (status !== 'in_review') {
+                        throw new ApiError(
+                            400,
+                            'La respuesta de una solicitud observada debe devolverla a En revisión.'
+                        );
+                    }
+
+                    /*
+                     * Si se adjunta evidencia, debe:
+                     * - pertenecer al usuario actual
+                     * - estar todavía sin asociar
+                     * - existir realmente en evidence_uploads
+                     */
+                    if (evidencePath) {
+                        const evidence = await client.query(
+                            `select path
+                         from evidence_uploads
+                         where path = $1
+                           and uploaded_by = $2
+                           and request_id is null`,
+                            [evidencePath, request.user.id]
+                        );
+
+                        if (!evidence.rows[0]) {
+                            throw new ApiError(
+                                400,
+                                'La evidencia no existe, no te pertenece o ya fue utilizada.'
+                            );
+                        }
+
+                        await client.query(
+                            `update evidence_uploads
+                         set request_id = $1
+                         where path = $2`,
+                            [id, evidencePath]
+                        );
+                    }
+
+                    /*
+                     * No modificamos review_comment/reviewed_by:
+                     * esos campos representan la última revisión de WF.
+                     *
+                     * La respuesta del solicitante queda registrada
+                     * en request_events para conservar trazabilidad.
+                     */
+                    const result = await client.query(
+                        `update requests
+                     set status = $1,
+                         updated_at = now()
+                     where id = $2
+                     returning *`,
+                        [status, id]
+                    );
+
+                    await client.query(
+                        `insert into request_events (
+                        request_id,
+                        user_id,
+                        from_status,
+                        to_status,
+                        comment
+                    )
+                    values ($1, $2, $3, $4, $5)`,
+                        [
+                            id,
+                            request.user.id,
+                            previousStatus,
+                            status,
+                            comment
+                        ]
+                    );
+
+                    return result.rows[0];
+                }
+
+                /*
+                 * ==========================================
+                 * WFM / SUPERADMIN
+                 * ==========================================
+                 */
+
+                let validTransition = false;
+
+                if (
+                    previousStatus === 'pending'
+                    && status === 'in_review'
+                ) {
+                    validTransition = true;
+                }
+
+                if (
+                    previousStatus === 'in_review'
+                    && ['observed', 'approved', 'rejected'].includes(status)
+                ) {
+                    validTransition = true;
+                }
+
+                if (!validTransition) {
+                    throw new ApiError(
+                        400,
+                        `No se permite pasar de "${previousStatus}" a "${status}".`
+                    );
+                }
+
+                /*
+                 * Las respuestas de WF son obligatorias para:
+                 * - Observado
+                 * - Aprobado
+                 * - Rechazado
+                 */
+                if (
+                    ['observed', 'approved', 'rejected'].includes(status)
+                    && !comment
+                ) {
+                    throw new ApiError(
+                        400,
+                        'La respuesta de WF es obligatoria.'
+                    );
+                }
+
+                const result = await client.query(
+                    `update requests
+                 set status = $1,
+                     review_comment = $2,
+                     reviewed_by = $3,
+                     reviewed_at = now(),
+                     updated_at = now()
+                 where id = $4
+                 returning *`,
+                    [
+                        status,
+                        comment,
+                        request.user.id,
+                        id
+                    ]
+                );
+
+                await client.query(
+                    `insert into request_events (
+                    request_id,
+                    user_id,
+                    from_status,
+                    to_status,
+                    comment
+                )
+                values ($1, $2, $3, $4, $5)`,
+                    [
+                        id,
+                        request.user.id,
+                        previousStatus,
+                        status,
+                        comment
+                    ]
+                );
+
+                return result.rows[0];
+            });
+
+            response.json({ data: updated });
         }
-        if (FINAL_STATUSES.has(status) && !comment) throw new ApiError(400, 'La respuesta de WF es obligatoria.');
-
-        const updated = await transaction(async client => {
-            const current = await client.query('select status from requests where id = $1 for update', [id]);
-            if (!current.rows[0]) throw new ApiError(404, 'La solicitud no existe.');
-            const previousStatus = current.rows[0].status;
-            const result = await client.query(
-                `update requests set status = $1, review_comment = $2, reviewed_by = $3,
-                    reviewed_at = now(), updated_at = now()
-                 where id = $4 returning *`,
-                [status, comment || null, request.user.id, id]
-            );
-            await client.query(
-                `insert into request_events (request_id, user_id, from_status, to_status, comment)
-                 values ($1, $2, $3, $4, $5)`,
-                [id, request.user.id, previousStatus, status, comment || null]
-            );
-            return result.rows[0];
-        });
-        response.json({ data: updated });
-    });
-
+    );
     app.post('/api/data/business_rules', requireRole('wfm', 'superadmin'), async (request, response) => {
         if (request.body?.operation !== 'upsert' || !Array.isArray(request.body?.values)) {
             throw new ApiError(400, 'La operación solicitada no es válida.');

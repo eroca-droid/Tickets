@@ -718,15 +718,15 @@ function renderWF() {
 
 
                         ${
-                            /*
-                               Solo muestra "Ver detalle"
-                               si el estado está pendiente
-                               o en revisión.
-                            */
-                            status === 'pending'
-                            || status === 'in_review'
+                    /*
+                       Solo muestra "Ver detalle"
+                       si el estado está pendiente
+                       o en revisión.
+                    */
+                    status === 'pending'
+                        || status === 'in_review'
 
-                                ? `
+                        ? `
                                     <button
                                         class="text-button wf-review"
                                         data-id="${item.id}"
@@ -736,8 +736,8 @@ function renderWF() {
                                     </button>
                                 `
 
-                                : ''
-                        }
+                        : ''
+                    }
 
                     </div>
 
@@ -1304,7 +1304,7 @@ function updateTypeFields() {
 
         period.style.display =
             type === 'schedule_change'
-            || type === 'swap'
+                || type === 'swap'
 
                 ? 'block'
                 : 'none';
@@ -1569,7 +1569,7 @@ async function applyRequestPermissions() {
                             ? role === 'supervisor'
 
                             : role === 'coordinator'
-                              || role === 'supervisor';
+                            || role === 'supervisor';
 
 
             /*
@@ -2976,10 +2976,9 @@ function bindStaticRules() {
                        Descripción generada.
                     */
                     description:
-                        `Regla configurada por WFM para ${
-                            row.querySelector(
-                                'strong'
-                            ).textContent
+                        `Regla configurada por WFM para ${row.querySelector(
+                            'strong'
+                        ).textContent
                         }.`,
 
 
@@ -3159,9 +3158,8 @@ window.openReview =
         if (title) {
 
             title.textContent =
-                `${item.id} · ${
-                    wfTypes[item.type]
-                    || item.type
+                `${item.id} · ${wfTypes[item.type]
+                || item.type
                 }`;
         }
 
@@ -3191,30 +3189,27 @@ window.openReview =
                 <span>
                     DNI:
                     <b>
-                        ${
-                            escapeHtml(item.employee_dni)
-                            || 'No registrado'
-                        }
+                        ${escapeHtml(item.employee_dni)
+                || 'No registrado'
+                }
                     </b>
                 </span>
 
                 <span>
                     Cargo:
                     <b>
-                        ${
-                            escapeHtml(item.employee_job_title)
-                            || 'No registrado'
-                        }
+                        ${escapeHtml(item.employee_job_title)
+                || 'No registrado'
+                }
                     </b>
                 </span>
 
                 <span>
                     Servicio:
                     <b>
-                        ${
-                            escapeHtml(item.employee_service)
-                            || 'No registrado'
-                        }
+                        ${escapeHtml(item.employee_service)
+                || 'No registrado'
+                }
                     </b>
                 </span>
 
@@ -3231,63 +3226,31 @@ window.openReview =
         }
 
 
-        /*
-           Por defecto indica que no existe evidencia.
-        */
-        let evidence =
-            'Sin evidencia adjunta';
+/*
+   Por defecto indica que no existe evidencia.
+*/
+let evidence =
+    'Sin evidencia adjunta';
 
 
-        /*
-           Si existe una ruta de evidencia,
-           genera una URL firmada temporal.
-        */
-        if (item.evidence_path) {
+/*
+   Si existe una ruta de evidencia,
+   genera un enlace interno para abrirla.
+*/
+if (item.evidence_path) {
+    const evidenceUrl =
+        `/api/evidence?path=${encodeURIComponent(item.evidence_path)}`;
 
-
-            /*
-               API PostgreSQL Storage:
-
-               request-evidence
-               → nombre del bucket.
-
-               createSignedUrl()
-               → genera URL temporal.
-
-               3600 segundos
-               = 1 hora.
-            */
-            const result =
-                await apiClient
-                    .storage
-                    .from(
-                        'request-evidence'
-                    )
-                    .createSignedUrl(
-                        item.evidence_path,
-                        3600
-                    );
-
-
-            /*
-               Si la URL se generó correctamente,
-               crea enlace.
-            */
-            if (
-                result.data?.signedUrl
-            ) {
-
-                evidence = `
-                    <a
-                        href="${result.data.signedUrl}"
-                        target="_blank"
-                        rel="noopener"
-                    >
-                        Abrir evidencia
-                    </a>
-                `;
-            }
-        }
+    evidence = `
+        <a
+            href="${evidenceUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Abrir evidencia
+        </a>
+    `;
+}
 
 
         /*
@@ -3312,19 +3275,17 @@ window.openReview =
                 <p>
                     <b>Motivo</b>
                     <br>
-                    ${
-                        escapeHtml(item.reason)
-                        || 'Sin motivo registrado'
-                    }
+                    ${escapeHtml(item.reason)
+                || 'Sin motivo registrado'
+                }
                 </p>
 
                 <p>
                     <b>Horas</b>
                     <br>
-                    ${
-                        item.hours
-                        || 'No especificadas'
-                    }
+                    ${item.hours
+                || 'No especificadas'
+                }
                 </p>
 
                 <p>
@@ -3417,88 +3378,56 @@ if (closeReview) {
    data-status="approved"
    data-status="rejected"
 */
+
 document
-    .querySelectorAll(
-        '.review-action'
-    )
+    .querySelectorAll('.review-action')
     .forEach(button => {
 
         button.addEventListener(
             'click',
             async () => {
 
-
-                /*
-                   Obtiene el modal.
-                */
                 const modal =
-                    document.querySelector(
-                        '#reviewModal'
-                    );
+                    document.querySelector('#reviewModal');
 
-
-                /*
-                   Obtiene el ID TC-XXX.
-                */
                 const id =
                     modal?.dataset.id;
 
-
-                /*
-                   Convierte:
-
-                   TC-123
-                   ↓
-                   123
-
-                   porque API PostgreSQL probablemente
-                   almacena el ID numérico.
-                */
                 const dbId =
-                    id?.replace(
-                        'TC-',
-                        ''
-                    );
+                    id?.replace('TC-', '');
 
-
-                /*
-                   Obtiene el nuevo estado
-                   desde el botón presionado.
-                */
                 const status =
                     button.dataset.status;
 
-
-                /*
-                   Obtiene comentario de WFM.
-                */
                 const comment =
                     document
-                        .querySelector(
-                            '#reviewComment'
-                        )
+                        .querySelector('#reviewComment')
                         ?.value
                         .trim()
                     || '';
 
+                const currentRole =
+                    demoRole?.key;
+
+                const isRequester =
+                    ['coordinator', 'supervisor']
+                        .includes(currentRole);
 
                 /*
-                   El comentario es obligatorio
-                   antes de aprobar/rechazar.
-                */
+                 * La respuesta siempre es obligatoria
+                 * cuando se ejecuta una acción.
+                 */
                 if (!comment) {
 
                     alert(
-                        'Escribe una respuesta de WFM antes de guardar.'
+                        isRequester
+                            ? 'Escribe tu respuesta antes de enviar.'
+                            : 'Escribe una respuesta de WFM antes de guardar.'
                     );
 
                     return;
                 }
 
-
-                /*
-                   Obtiene el usuario autenticado.
-                */
                 const {
                     data: { user }
                 } =
@@ -3506,11 +3435,6 @@ document
                         .auth
                         .getUser();
 
-
-                /*
-                   Protección:
-                   verifica que exista usuario.
-                */
                 if (!user) {
 
                     alert(
@@ -3520,16 +3444,106 @@ document
                     return;
                 }
 
+                /*
+                 * ==========================================
+                 * EVIDENCIA ADICIONAL
+                 * ==========================================
+                 *
+                 * Solo se utiliza cuando Supervisor/
+                 * Coordinador responde una observación.
+                 */
+                let evidencePath = '';
+
+                const evidenceInput =
+                    document.querySelector('#reviewEvidence');
+
+                const file =
+                    evidenceInput?.files?.[0];
+
+                if (
+                    isRequester
+                    && status === 'in_review'
+                    && file
+                ) {
+
+                    try {
+
+                        const safeName =
+                            file.name
+                                .replace(
+                                    /[^a-zA-Z0-9._-]/g,
+                                    '_'
+                                )
+                                .slice(
+                                    0,
+                                    180
+                                );
+
+                        const uniqueName =
+                            `${Date.now()}-${safeName}`;
+
+                        evidencePath =
+                            `${user.id}/${uniqueName}`;
+
+                        const formData =
+                            new FormData();
+
+                        formData.append(
+                            'file',
+                            file
+                        );
+
+                        formData.append(
+                            'path',
+                            evidencePath
+                        );
+
+                        const uploadResponse =
+                            await fetch(
+                                '/api/evidence',
+                                {
+                                    method: 'POST',
+                                    body: formData,
+                                    credentials: 'same-origin'
+                                }
+                            );
+
+                        const uploadResult =
+                            await uploadResponse
+                                .json();
+
+                        if (
+                            !uploadResponse.ok
+                            || !uploadResult.data?.path
+                        ) {
+
+                            throw new Error(
+                                uploadResult.error
+                                || 'No se pudo cargar la evidencia.'
+                            );
+                        }
+
+                        evidencePath =
+                            uploadResult.data.path;
+
+                    } catch (error) {
+
+                        alert(
+                            `No se pudo cargar la evidencia: ${error.message}`
+                        );
+
+                        return;
+                    }
+                }
 
                 /*
-                   ACTUALIZAR SOLICITUD
-
-                   Actualiza:
-                   - Estado.
-                   - Comentario.
-                   - Usuario revisor.
-                   - Fecha de revisión.
-                */
+                 * ==========================================
+                 * ACTUALIZAR SOLICITUD
+                 * ==========================================
+                 *
+                 * El backend decide si la transición
+                 * realmente está permitida.
+                 */
                 const update =
                     await apiClient
                         .from('requests')
@@ -3544,7 +3558,10 @@ document
                                 user.id,
 
                             reviewed_at:
-                                new Date().toISOString()
+                                new Date().toISOString(),
+
+                            evidence_path:
+                                evidencePath || null
 
                         })
                         .eq(
@@ -3552,11 +3569,6 @@ document
                             dbId
                         );
 
-
-                /*
-                   Si ocurre un error,
-                   muestra mensaje.
-                */
                 if (update.error) {
 
                     alert(
@@ -3566,15 +3578,9 @@ document
                     return;
                 }
 
-
-                /* La API registra el cambio y su historial en una sola transacción. */
-
-
                 /*
-                   También actualiza localStorage
-                   para que la interfaz refleje
-                   inmediatamente el cambio.
-                */
+                 * Actualiza la copia local.
+                 */
                 const list =
                     JSON.parse(
                         localStorage.getItem(
@@ -3582,22 +3588,27 @@ document
                         ) || '[]'
                     );
 
-
                 const item =
                     list.find(
                         request =>
                             request.id === id
                     );
 
-
                 if (item) {
 
                     item.status =
                         status;
 
-                    item.review_comment =
-                        comment;
+                    /*
+                     * Para respuestas de Supervisor/
+                     * Coordinador mantenemos la observación
+                     * original de WF.
+                     */
+                    if (!isRequester) {
 
+                        item.review_comment =
+                            comment;
+                    }
 
                     localStorage.setItem(
                         'turnoClaroRequests',
@@ -3605,34 +3616,39 @@ document
                     );
                 }
 
+                /*
+                 * Limpia el archivo seleccionado.
+                 */
+                if (evidenceInput) {
+                    evidenceInput.value = '';
+                }
 
                 /*
-                   Cierra modal.
-                */
+                 * Cierra modal.
+                 */
                 modal?.classList.remove(
                     'open'
                 );
 
-
                 /*
-                   Actualiza panel WFM.
-                */
+                 * Refresca las vistas existentes.
+                 */
                 renderWF();
-                if (typeof renderVisibleTickets === 'function') {
+
+                if (
+                    typeof renderVisibleTickets === 'function'
+                ) {
                     renderVisibleTickets();
                 }
 
-
-                /*
-                   Mensaje final.
-                */
                 alert(
-                    'Revisión guardada.'
+                    isRequester
+                        ? 'Respuesta enviada correctamente.'
+                        : 'Revisión guardada.'
                 );
             }
         );
     });
-
 
 /* =========================================================
    33. CONTROL FINAL DEL MODAL SEGÚN ROL
@@ -3650,16 +3666,18 @@ const originalOpenReview =
 
 /*
    Sobrescribe openReview agregando
-   una capa adicional de permisos.
+   el control visual de acciones según:
+
+   - Rol.
+   - Estado actual de la solicitud.
 */
 window.openReview =
     async id => {
 
-
         /*
            Primero ejecuta la función original.
 
-           Esto carga todos los datos
+           Esto carga los datos
            y abre el modal.
         */
         await originalOpenReview(id);
@@ -3683,35 +3701,144 @@ window.openReview =
 
 
         /*
-           Obtiene permiso de revisión
-           del rol actual.
+           Obtiene el rol actual.
+        */
+        const currentRole =
+            demoRole?.key;
+
+
+        /*
+           Identifica si el usuario
+           es Supervisor o Coordinador.
+        */
+        const isRequester =
+            ['coordinator', 'supervisor']
+                .includes(currentRole);
+
+
+        /*
+           Identifica si el usuario
+           puede realizar revisión WF.
         */
         const canReview =
-            demoRole.canReview;
+            ['wfm', 'superadmin']
+                .includes(currentRole);
 
 
         /*
-           Muestra u oculta botones:
-
-           Aprobar.
-           Rechazar.
-           Etc.
+           Estado actual de la solicitud.
         */
-        document
-            .querySelectorAll(
-                '.review-action'
-            )
-            .forEach(button => {
-
-                button.style.display =
-                    canReview
-                        ? 'inline-block'
-                        : 'none';
-            });
+        const status =
+            item.status;
 
 
         /*
-           Busca campo de comentario.
+           Busca los botones del modal.
+        */
+        const actions =
+            document.querySelectorAll(
+                '.review-action'
+            );
+
+
+        /*
+           Oculta todos los botones
+           antes de determinar cuál corresponde.
+        */
+        actions.forEach(button => {
+
+            button.style.display =
+                'none';
+        });
+
+
+        /*
+           WFM / SUPERADMIN
+           --------------------------------
+
+           PENDIENTE
+           → En revisión
+
+           EN REVISIÓN
+           → Observar
+           → Aprobar
+           → Rechazar
+        */
+        if (canReview) {
+
+            if (
+                status === 'pending'
+            ) {
+
+                const startButton =
+                    document.querySelector(
+                        '.review-action[data-status="in_review"]'
+                    );
+
+                if (startButton) {
+                    startButton.style.display =
+                        'inline-block';
+                }
+            }
+
+
+            if (
+                status === 'in_review'
+            ) {
+
+                [
+                    'observed',
+                    'approved',
+                    'rejected'
+                ].forEach(targetStatus => {
+
+                    const button =
+                        document.querySelector(
+                            `.review-action[data-status="${targetStatus}"]`
+                        );
+
+                    if (button) {
+                        button.style.display =
+                            'inline-block';
+                    }
+                });
+            }
+        }
+
+
+        /*
+           SUPERVISOR / COORDINADOR
+           --------------------------------
+
+           Solo pueden responder
+           una solicitud OBSERVADA.
+
+           observed
+           → En revisión
+        */
+        if (
+            isRequester
+            && status === 'observed'
+        ) {
+
+            const responseButton =
+                document.querySelector(
+                    '.review-action[data-status="in_review"]'
+                );
+
+            if (responseButton) {
+
+                responseButton.style.display =
+                    'inline-block';
+
+                responseButton.textContent =
+                    'Responder · En revisión';
+            }
+        }
+
+
+        /*
+           Busca el campo de comentario.
         */
         const reviewComment =
             document.querySelector(
@@ -3719,30 +3846,108 @@ window.openReview =
             );
 
 
-        if (reviewComment) {
+        /*
+           Busca el contenedor del comentario.
+        */
+        const reviewCommentField =
+            document.querySelector(
+                '#reviewCommentField'
+            );
 
 
-            /*
-               Busca el contenedor completo
-               del campo.
-            */
-            const field =
-                reviewComment.closest(
-                    '.field'
-                );
+        /*
+           Busca el campo de evidencia.
+        */
+        const reviewEvidenceField =
+            document.querySelector(
+                '#reviewEvidenceField'
+            );
 
 
-            /*
-               Solo WFM/Gerencia puede escribir
-               comentarios de revisión.
-            */
-            if (field) {
+        /*
+           Configuración del comentario.
 
-                field.style.display =
-                    canReview
-                        ? 'block'
-                        : 'none';
-            }
+           WFM / Superadmin:
+           → visible cuando pueden revisar.
+
+           Supervisor / Coordinador:
+           → visible únicamente al responder
+             una observación.
+        */
+        const showComment =
+            (
+                canReview
+                && (
+                    status === 'pending'
+                    || status === 'in_review'
+                )
+            )
+            || (
+                isRequester
+                && status === 'observed'
+            );
+
+
+        if (reviewCommentField) {
+
+            reviewCommentField.style.display =
+                showComment
+                    ? 'block'
+                    : 'none';
+        }
+
+
+        /*
+           Cambia el texto del campo
+           según quién esté respondiendo.
+        */
+        const reviewCommentLabel =
+            document.querySelector(
+                '#reviewCommentLabel'
+            );
+
+
+        if (reviewCommentLabel) {
+
+            reviewCommentLabel.textContent =
+                isRequester
+                    ? 'Respuesta a la observación'
+                    : 'Respuesta de WFM';
+        }
+
+
+        /*
+           Limpia el comentario cuando
+           el campo no corresponde al rol/estado.
+        */
+        if (
+            reviewComment
+            && !showComment
+        ) {
+
+            reviewComment.value =
+                '';
+        }
+
+
+        /*
+           La evidencia adicional solamente
+           está disponible para:
+
+           Supervisor / Coordinador
+           +
+           solicitud observada.
+        */
+        const showEvidence =
+            isRequester
+            && status === 'observed';
+
+
+        if (reviewEvidenceField) {
+
+            reviewEvidenceField.style.display =
+                showEvidence
+                    ? 'block'
+                    : 'none';
         }
     };
-
