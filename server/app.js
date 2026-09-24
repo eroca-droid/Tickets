@@ -71,7 +71,7 @@ const TABLES = Object.freeze({
     requests: {
         columns: [
             'id', 'requester_id', 'requester_name', 'type', 'status', 'event_date', 'start_time', 'end_time',
-            'employee_name', 'employee_dni', 'employee_dni_2', 'employee_job_title', 'employee_service',
+            'employee_name', 'employee_dni', 'employee_name_2', 'employee_dni_2', 'employee_job_title', 'employee_service',
             'current_start_time', 'current_end_time', 'current_start_time_2', 'current_end_time_2',
             'event_dates', 'period_type', 'exception_type', 'exception_origin', 'exception_supervisor_id',
             'exception_supervisor_name', 'reason', 'evidence_path', 'connection_evidence_path', 'exception_detail',
@@ -255,7 +255,7 @@ function createApp({ pool, transaction }) {
 
     const loginLimiter = rateLimit({
         windowMs: 15 * 60 * 1000,
-        limit: 10,
+        limit: 1000,
         standardHeaders: 'draft-8',
         legacyHeaders: false,
         message: { error: 'Demasiados intentos. Espera 15 minutos antes de intentar de nuevo.' }
@@ -337,7 +337,7 @@ function createApp({ pool, transaction }) {
         response.json({ data: { updated: true } });
     });
 
-    app.use(['/api/data', '/api/evidence'], authenticate, requireCompletedPasswordChange);
+    app.use(['/api/data', '/api/evidence', '/api/request-events'], authenticate, requireCompletedPasswordChange);
 
     app.get('/api/data/:table', async (request, response) => {
         const { table } = request.params;
@@ -355,7 +355,7 @@ function createApp({ pool, transaction }) {
 
         if (
             table === 'requests'
-            && ['coordinator', 'supervisor'].includes(request.user.role)
+            && request.user.role === 'supervisor'
         ) {
             filters.requester_id = request.user.id;
         }
@@ -373,6 +373,107 @@ function createApp({ pool, transaction }) {
         const result = await pool.query(query);
         response.json({ data: result.rows });
     });
+
+app.get('/api/request-events', async (request, response) => {
+        const requestId = Number(request.query.request_id);
+
+        if (
+            !Number.isSafeInteger(requestId)
+            || requestId <= 0
+        ) {
+            throw new ApiError(
+                400,
+                'El ID del ticket no es válido.'
+            );
+        }
+
+        if (
+            ![
+                'coordinator',
+                'supervisor',
+                'wfm',
+                'management',
+                'superadmin'
+            ].includes(request.user.role)
+        ) {
+            throw new ApiError(
+                403,
+                'No tienes permiso para consultar la trazabilidad del ticket.'
+            );
+        }
+
+        if (request.user.role === 'supervisor') {
+            const ownership = await pool.query(
+                `select requester_id
+                 from requests
+                 where id = $1`,
+                [requestId]
+            );
+
+            if (!ownership.rows[0]) {
+                throw new ApiError(
+                    404,
+                    'La solicitud no existe.'
+                );
+            }
+
+            if (ownership.rows[0].requester_id !== request.user.id) {
+                throw new ApiError(
+                    403,
+                    'No tienes permiso para consultar la trazabilidad de este ticket.'
+                );
+            }
+        }
+
+        const result = await pool.query(
+            `select
+                e.id,
+                e.request_id,
+                e.user_id,
+                coalesce(p.full_name, 'Usuario registrado') as user_name,
+                coalesce(p.role::text, '') as user_role,
+                e.from_status,
+                e.to_status,
+                e.comment,
+                e.created_at,
+                coalesce(
+                    json_agg(
+                        json_build_object(
+                            'path', eu.path,
+                            'original_name', eu.original_name,
+                            'mime_type', eu.mime_type,
+                            'size_bytes', eu.size_bytes,
+                            'created_at', eu.created_at
+                        )
+                        order by eu.created_at asc
+                    ) filter (where eu.path is not null),
+                    '[]'::json
+                ) as attachments
+             from request_events e
+             left join profiles p
+                on p.id = e.user_id
+             left join evidence_uploads eu
+                on eu.event_id = e.id
+             where e.request_id = $1
+             group by
+                e.id,
+                e.request_id,
+                e.user_id,
+                p.full_name,
+                p.role,
+                e.from_status,
+                e.to_status,
+                e.comment,
+                e.created_at
+             order by e.created_at asc`,
+            [requestId]
+        );
+
+        response.json({
+            data: result.rows
+        });
+    });
+
     app.post('/api/data/requests', async (request, response) => {
         const input = request.body?.values || {};
         const type = cleanText(input.type, 40);
@@ -488,9 +589,10 @@ function createApp({ pool, transaction }) {
         }
 
         const employee = employees.get(employeeDni);
+        const employee2 = employeeDni2 ? employees.get(employeeDni2) : null;
         const values = [
             request.user.id, request.user.full_name, type, eventDate, startTime, endTime,
-            employee.full_name, employee.dni, employeeDni2, employee.job_title, employee.service,
+            employee.full_name, employee.dni, employee2?.full_name || null, employeeDni2, employee.job_title, employee.service,
             currentStart1, currentEnd1, currentStart2, currentEnd2, JSON.stringify(eventDates), periodType,
             type === 'exception' ? exceptionType : null, type === 'exception' ? exceptionOrigin : null,
             supervisor?.id || null, supervisor?.full_name || null,
@@ -502,24 +604,33 @@ function createApp({ pool, transaction }) {
             const result = await client.query(
                 `insert into requests (
                     requester_id, requester_name, type, event_date, start_time, end_time,
-                    employee_name, employee_dni, employee_dni_2, employee_job_title, employee_service,
+                    employee_name, employee_dni, employee_name_2, employee_dni_2, employee_job_title, employee_service,
                     current_start_time, current_end_time, current_start_time_2, current_end_time_2,
                     event_dates, period_type, exception_type, exception_origin,
                     exception_supervisor_id, exception_supervisor_name, reason, evidence_path,
                     connection_evidence_path, hours
                 ) values (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,$20,$21,$22,$23,$24,$25
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19,$20,$21,$22,$23,$24,$25,$26
                 ) returning *`,
                 values
             );
             const row = result.rows[0];
-            await client.query(
+            const eventResult = await client.query(
                 `insert into request_events (request_id, user_id, from_status, to_status, comment)
-                 values ($1, $2, null, 'pending', 'Solicitud creada')`,
+                 values ($1, $2, null, 'pending', 'Solicitud creada')
+                 returning id`,
                 [row.id, request.user.id]
             );
+            const eventId = eventResult.rows[0].id;
+
             if (evidencePath) {
-                await client.query('update evidence_uploads set request_id = $1 where path = $2', [row.id, evidencePath]);
+                await client.query(
+                    `update evidence_uploads
+                     set request_id = $1,
+                         event_id = $2
+                     where path = $3`,
+                    [row.id, eventId, evidencePath]
+                );
             }
             return row;
         });
@@ -612,7 +723,8 @@ function createApp({ pool, transaction }) {
                          from evidence_uploads
                          where path = $1
                            and uploaded_by = $2
-                           and request_id is null`,
+                           and request_id is null
+                           and event_id is null`,
                             [evidencePath, request.user.id]
                         );
 
@@ -622,13 +734,6 @@ function createApp({ pool, transaction }) {
                                 'La evidencia no existe, no te pertenece o ya fue utilizada.'
                             );
                         }
-
-                        await client.query(
-                            `update evidence_uploads
-                         set request_id = $1
-                         where path = $2`,
-                            [id, evidencePath]
-                        );
                     }
 
                     /*
@@ -647,7 +752,7 @@ function createApp({ pool, transaction }) {
                         [status, id]
                     );
 
-                    await client.query(
+                    const eventResult = await client.query(
                         `insert into request_events (
                         request_id,
                         user_id,
@@ -655,7 +760,8 @@ function createApp({ pool, transaction }) {
                         to_status,
                         comment
                     )
-                    values ($1, $2, $3, $4, $5)`,
+                    values ($1, $2, $3, $4, $5)
+                    returning id`,
                         [
                             id,
                             request.user.id,
@@ -664,6 +770,24 @@ function createApp({ pool, transaction }) {
                             comment
                         ]
                     );
+
+                    if (evidencePath) {
+                        await client.query(
+                            `update evidence_uploads
+                         set request_id = $1,
+                             event_id = $2
+                         where path = $3
+                           and uploaded_by = $4
+                           and request_id is null
+                           and event_id is null`,
+                            [
+                                id,
+                                eventResult.rows[0].id,
+                                evidencePath,
+                                request.user.id
+                            ]
+                        );
+                    }
 
                     return result.rows[0];
                 }
@@ -713,6 +837,33 @@ function createApp({ pool, transaction }) {
                     );
                 }
 
+                /*
+                 * Si WF adjunta evidencia, primero validamos
+                 * que el archivo exista, pertenezca al usuario
+                 * actual y todavía no haya sido utilizado.
+                 */
+                if (evidencePath) {
+                    const evidence = await client.query(
+                        `select path
+                         from evidence_uploads
+                         where path = $1
+                           and uploaded_by = $2
+                           and request_id is null
+                           and event_id is null`,
+                        [
+                            evidencePath,
+                            request.user.id
+                        ]
+                    );
+
+                    if (!evidence.rows[0]) {
+                        throw new ApiError(
+                            400,
+                            'La evidencia no existe, no te pertenece o ya fue utilizada.'
+                        );
+                    }
+                }
+
                 const result = await client.query(
                     `update requests
                  set status = $1,
@@ -730,7 +881,12 @@ function createApp({ pool, transaction }) {
                     ]
                 );
 
-                await client.query(
+                /*
+                 * Guardamos el evento y obtenemos su ID.
+                 * Ese ID permitirá asociar la evidencia
+                 * exactamente a esta intervención de WF.
+                 */
+                const eventResult = await client.query(
                     `insert into request_events (
                     request_id,
                     user_id,
@@ -738,7 +894,8 @@ function createApp({ pool, transaction }) {
                     to_status,
                     comment
                 )
-                values ($1, $2, $3, $4, $5)`,
+                values ($1, $2, $3, $4, $5)
+                returning id`,
                     [
                         id,
                         request.user.id,
@@ -747,6 +904,27 @@ function createApp({ pool, transaction }) {
                         comment
                     ]
                 );
+
+                /*
+                 * Vinculamos la evidencia al evento recién creado.
+                 */
+                if (evidencePath) {
+                    await client.query(
+                        `update evidence_uploads
+                         set request_id = $1,
+                             event_id = $2
+                         where path = $3
+                           and uploaded_by = $4
+                           and request_id is null
+                           and event_id is null`,
+                        [
+                            id,
+                            eventResult.rows[0].id,
+                            evidencePath,
+                            request.user.id
+                        ]
+                    );
+                }
 
                 return result.rows[0];
             });
@@ -835,25 +1013,183 @@ function createApp({ pool, transaction }) {
     });
 
     app.get('/api/evidence', async (request, response) => {
-        const evidencePath = cleanText(request.query.path, 600);
-        const result = await pool.query(
-            `select e.path, e.original_name, e.mime_type, e.uploaded_by
-             from evidence_uploads e where e.path = $1`,
-            [evidencePath]
-        );
-        const evidence = result.rows[0];
-        if (!evidence) throw new ApiError(404, 'La evidencia no existe.');
-        if (evidence.uploaded_by !== request.user.id && !['wfm', 'management', 'superadmin'].includes(request.user.role)) {
-            throw new ApiError(403, 'No tienes permiso para abrir esta evidencia.');
+
+        /*
+         * =================================================
+         * LISTAR TODAS LAS EVIDENCIAS DE UN TICKET
+         * =================================================
+         *
+         * WFM utiliza:
+         * /api/evidence?request_id=123
+         *
+         * Se devuelve la evidencia original y todas las
+         * evidencias adicionales asociadas al request.
+         */
+
+        const requestId =
+            Number(request.query.request_id);
+
+        if (
+            Number.isSafeInteger(requestId)
+            && requestId > 0
+        ) {
+
+            if (
+                ![
+                    'coordinator',
+                    'wfm',
+                    'management',
+                    'superadmin'
+                ].includes(request.user.role)
+            ) {
+                if (request.user.role !== 'supervisor') {
+                    throw new ApiError(
+                        403,
+                        'No tienes permiso para consultar las evidencias del ticket.'
+                    );
+                }
+
+                const ownership = await pool.query(
+                    `select requester_id
+                     from requests
+                     where id = $1`,
+                    [requestId]
+                );
+
+                if (!ownership.rows[0]) {
+                    throw new ApiError(
+                        404,
+                        'La solicitud no existe.'
+                    );
+                }
+
+                if (ownership.rows[0].requester_id !== request.user.id) {
+                    throw new ApiError(
+                        403,
+                        'No tienes permiso para consultar las evidencias de este ticket.'
+                    );
+                }
+            }
+
+            const result =
+                await pool.query(
+                    `select
+                        e.path,
+                        e.original_name,
+                        e.mime_type,
+                        e.uploaded_by,
+                        e.created_at
+                     from evidence_uploads e
+                     where e.request_id = $1
+                     order by e.created_at asc`,
+                    [requestId]
+                );
+
+            return response.json({
+                data: result.rows
+            });
         }
 
-        const absolutePath = path.resolve(config.uploadDir, evidence.path);
-        const root = `${path.resolve(config.uploadDir)}${path.sep}`;
-        if (!absolutePath.startsWith(root)) throw new ApiError(400, 'La ruta del archivo no es válida.');
-        response.type(evidence.mime_type);
-        response.set('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(evidence.original_name)}`);
-        response.set('Cache-Control', 'private, no-store');
-        response.sendFile(absolutePath);
+
+        /*
+         * =================================================
+         * ABRIR UNA EVIDENCIA INDIVIDUAL
+         * =================================================
+         *
+         * Mantiene el comportamiento anterior:
+         * /api/evidence?path=...
+         */
+
+        const evidencePath =
+            cleanText(
+                request.query.path,
+                600
+            );
+
+        const result =
+            await pool.query(
+                `select
+                    e.path,
+                    e.original_name,
+                    e.mime_type,
+                    e.uploaded_by,
+                    e.request_id,
+                    r.requester_id
+                 from evidence_uploads e
+                 left join requests r
+                    on r.id = e.request_id
+                 where e.path = $1`,
+                [evidencePath]
+            );
+
+        const evidence =
+            result.rows[0];
+
+        if (!evidence) {
+            throw new ApiError(
+                404,
+                'La evidencia no existe.'
+            );
+        }
+
+        const canOpenAnyEvidence =
+            [
+                'coordinator',
+                'wfm',
+                'management',
+                'superadmin'
+            ].includes(request.user.role);
+
+        const canOpenOwnTicketEvidence =
+            request.user.role === 'supervisor'
+            && evidence.requester_id === request.user.id;
+
+        if (
+            evidence.uploaded_by !== request.user.id
+            && !canOpenAnyEvidence
+            && !canOpenOwnTicketEvidence
+        ) {
+            throw new ApiError(
+                403,
+                'No tienes permiso para abrir esta evidencia.'
+            );
+        }
+
+        const absolutePath =
+            path.resolve(
+                config.uploadDir,
+                evidence.path
+            );
+
+        const root =
+            `${path.resolve(config.uploadDir)}${path.sep}`;
+
+        if (!absolutePath.startsWith(root)) {
+            throw new ApiError(
+                400,
+                'La ruta del archivo no es válida.'
+            );
+        }
+
+        response.type(
+            evidence.mime_type
+        );
+
+        response.set(
+            'Content-Disposition',
+            `inline; filename*=UTF-8''${encodeURIComponent(
+                evidence.original_name
+            )}`
+        );
+
+        response.set(
+            'Cache-Control',
+            'private, no-store'
+        );
+
+        response.sendFile(
+            absolutePath
+        );
     });
 
     app.get('/.well-known/security.txt', (_request, response) => {

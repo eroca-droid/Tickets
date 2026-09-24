@@ -185,6 +185,9 @@ async function loadRealRequests() {
         employee:
             item.employee_name,
 
+        employee_name_2:
+            item.employee_name_2,
+
         employee_dni:
             item.employee_dni,
 
@@ -209,8 +212,14 @@ async function loadRealRequests() {
         current_end_time_2:
             item.current_end_time_2,
 
+        start_time:
+            item.start_time,
+
+        end_time:
+            item.end_time,
+
         date:
-            item.event_date,
+            item.created_at,
 
         event_dates:
             item.event_dates,

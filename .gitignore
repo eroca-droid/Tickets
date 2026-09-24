@@ -6,3 +6,13 @@ storage/evidence/*
 !storage/evidence/.gitkeep
 npm-debug.log*
 db/users-2026-09.tsv
+
+# Archivos locales de TEST / respaldos de datos
+compose.test.yaml
+dotacion_production.sql
+profiles_production.sql
+
+# Archivos locales de TEST / respaldos de datos
+compose.test.yaml
+dotacion_production.sql
+profiles_production.sql

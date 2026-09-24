@@ -174,21 +174,35 @@ if (detailGrid) {
 */
 if (employeeField) {
     employeeField.innerHTML = `
-        <span>DNI del asesor 1</span>
+        <div class="agent-block agent-block-primary">
 
-        <input
-            id="agentDni"
-            inputmode="numeric"
-            placeholder="Ej. 1234567890"
-            required
-        >
+            <span class="agent-block-title">
+                Asesor 1
+            </span>
 
-        <div
-            id="agentData"
-            class="agent-data"
-            aria-live="polite"
-        >
-            Escribe el DNI para consultar la dotación.
+            <label class="field agent-dni-field">
+
+                <span>
+                    DNI del asesor
+                </span>
+
+                <input
+                    id="agentDni"
+                    inputmode="numeric"
+                    placeholder="Ej. 1234567890"
+                    required
+                >
+
+                <div
+                    id="agentData"
+                    class="agent-data"
+                    aria-live="polite"
+                >
+                    Escribe el DNI para consultar la dotación.
+                </div>
+
+            </label>
+
         </div>
     `;
 }
@@ -279,103 +293,210 @@ if (typeFilter) {
 
 
 /* =========================================================
-   9. MENSAJES DE POLÍTICAS SEGÚN TIPO DE SOLICITUD
+   9. REGLAS DE NEGOCIO PARA EL FORMULARIO
    ========================================================= */
 
 /*
-   Busca el <span> interno donde se mostrará
-   el mensaje de política.
+   Las reglas de creación pertenecen al panel WFM.
+
+   El formulario no debe tener políticas quemadas como:
+   - 48 horas
+   - evidencia obligatoria
+   - corte 15:00
+
+   Aquí cargamos la configuración real de business_rules
+   y la dejamos disponible para el resto del formulario.
 */
-const policyText =
-    document.querySelector('#policyAlert span');
+
+window.wfmBusinessRules = {};
 
 
 /*
-   Esta función actualiza el mensaje de política.
-
-   Se ejecuta cada vez que el usuario cambia
-   el tipo de solicitud.
+   Carga las reglas configuradas por WFM.
 */
-const updatePolicy = () => {
+window.loadWfmBusinessRules = async () => {
 
-    /*
-       Obtiene el tipo de solicitud seleccionado.
+    try {
 
-       Ejemplos:
-       - comp_time
-       - siop_validation
-       - schedule_change
-    */
+        const result =
+            await apiClient
+                .from('business_rules')
+                .select('*');
+
+        if (result?.error) {
+            throw result.error;
+        }
+
+        window.wfmBusinessRules = {};
+
+        (result?.data || []).forEach(rule => {
+
+            if (!rule?.rule_key) return;
+
+            window.wfmBusinessRules[rule.rule_key] =
+                rule;
+        });
+
+        updatePolicy();
+
+        return window.wfmBusinessRules;
+
+    } catch (error) {
+
+        console.error(
+            'No se pudieron cargar las reglas de WFM:',
+            error
+        );
+
+        /*
+           Si falla la consulta, dejamos el objeto vacío.
+           El backend seguirá siendo la validación final.
+        */
+
+        window.wfmBusinessRules = {};
+
+        updatePolicy();
+
+        return window.wfmBusinessRules;
+    }
+};
+
+
+/*
+   Devuelve la regla correspondiente al tipo actual.
+*/
+const getWfmRule = type =>
+    window.wfmBusinessRules?.[type] || null;
+
+
+/*
+   Convierte las horas configuradas en un texto
+   entendible para el usuario.
+*/
+const formatAdvanceText = hours => {
+
+    const value = Number(hours);
+
+    if (!Number.isFinite(value) || value <= 0) {
+        return '';
+    }
+
+    if (value === 1) {
+        return 'Requiere 1 hora de anticipación.';
+    }
+
+    if (value < 24) {
+        return `Requiere ${value} horas de anticipación.`;
+    }
+
+    if (value % 24 === 0) {
+
+        const days = value / 24;
+
+        if (days === 1) {
+            return 'Requiere 1 día de anticipación.';
+        }
+
+        return `Requiere ${days} días de anticipación.`;
+    }
+
+    return `Requiere ${value} horas de anticipación.`;
+};
+
+
+/*
+   Actualiza el mensaje visual de política
+   utilizando exclusivamente business_rules.
+*/
+function updatePolicy() {
+
     const type =
         document.querySelector(
             'input[name="type"]:checked'
         )?.value;
 
+    const rule =
+        getWfmRule(type);
 
-    /*
-       Objeto que relaciona cada tipo de solicitud
-       con su mensaje de política.
-    */
-    const messages = {
-
-        comp_time:
-            'Compensados: solo fechas futuras y recepción hasta las 15:00 del día en curso.',
-
-        siop_validation:
-            'SIOP: mínimo 48 horas y evidencia obligatoria de la conexión del asesor. Si no cumple, explica el motivo de la no marcación.',
-
-        schedule_change:
-            'Cambios de horario: mínimo 48 horas. Si no se cumple, adjunta soporte de urgencia.'
-    };
-
-
-    /*
-       Busca el mensaje correspondiente al tipo actual.
-
-       Si el tipo no existe dentro de messages,
-       el resultado será undefined.
-    */
-    const message =
-        messages[type];
-
-
-    /*
-       Busca el contenedor visual de la alerta.
-    */
     const policyAlert =
         document.querySelector('#policyAlert');
 
+    const policyText =
+        document.querySelector('#policyAlert span');
+
+    const evidence =
+        document.querySelector('#evidence');
+
 
     /*
-       Muestra la alerta solamente si existe
-       un mensaje para el tipo seleccionado.
+       Construye el mensaje de forma dinámica.
     */
-    if (policyAlert) {
-        policyAlert.style.display =
-            message ? 'flex' : 'none';
+    const messages = [];
+
+    if (rule) {
+
+        const advanceText =
+            formatAdvanceText(
+                rule.min_advance_hours
+            );
+
+        if (advanceText) {
+            messages.push(advanceText);
+        }
+
+        if (rule.same_day_cutoff) {
+
+            const cutoff =
+                String(
+                    rule.same_day_cutoff
+                ).slice(0, 5);
+
+            messages.push(
+                `Para solicitudes del día de hoy, el corte es a las ${cutoff}.`
+            );
+        }
+
+        if (rule.requires_evidence) {
+
+            messages.push(
+                'La evidencia es obligatoria.'
+            );
+
+        } else {
+
+            messages.push(
+                'La evidencia es opcional.'
+            );
+        }
     }
 
 
     /*
-       Inserta el texto de la política.
+       Si todavía no se pudieron cargar las reglas,
+       no mostramos una política inventada.
     */
-    if (message && policyText) {
+    const message =
+        messages.join(' ');
+
+
+    if (policyAlert) {
+
+        policyAlert.style.display =
+            message
+                ? 'flex'
+                : 'none';
+    }
+
+
+    if (policyText) {
         policyText.textContent =
             message;
     }
 
 
     /*
-       Busca el input donde se adjunta evidencia.
-    */
-    const evidence =
-        document.querySelector('#evidence');
-
-
-    /*
-       Para SIOP la evidencia es obligatoria.
-
-       Para otros tipos se indica que depende del caso.
+       Actualiza el texto del campo de evidencia
+       según la configuración de WFM.
     */
     if (evidence) {
 
@@ -387,25 +508,28 @@ const updatePolicy = () => {
 
         if (evidenceLabel) {
 
-            evidenceLabel.textContent =
-                type === 'siop_validation'
-                    ? ' (obligatoria)'
-                    : ' (opcional según el caso)';
+            if (rule?.requires_evidence) {
+
+                evidenceLabel.textContent =
+                    ' (obligatoria)';
+
+            } else {
+
+                evidenceLabel.textContent =
+                    ' (opcional)';
+            }
         }
     }
-};
+}
 
 
 /*
-   Se agrega un listener a todos los radio buttons
-   que pertenecen al selector de tipo.
-
-   Cada vez que cambia el tipo:
-   → Se actualiza la política mostrada.
+   Actualiza la política cuando cambia el tipo.
 */
 document
     .querySelectorAll('input[name="type"]')
     .forEach(input => {
+
         input.addEventListener(
             'change',
             updatePolicy
@@ -414,15 +538,15 @@ document
 
 
 /*
-   Ejecuta la función una vez al cargar la página
-   para mostrar correctamente la política inicial.
+   Carga las reglas configuradas por WFM
+   al iniciar el formulario.
 */
-updatePolicy();
+window.loadWfmBusinessRules();
 
 
 /*
-   Vuelve a renderizar los iconos Lucide agregados
-   dinámicamente mediante data-lucide.
+   Vuelve a renderizar los iconos Lucide
+   agregados dinámicamente.
 */
 if (window.lucide) {
     lucide.createIcons();
@@ -430,68 +554,38 @@ if (window.lucide) {
 
 
 /* =========================================================
-   10. VALIDACIÓN DEL FORMULARIO SIOP
+   10. VALIDACIONES ESPECÍFICAS DEL FORMULARIO
    ========================================================= */
 
 /*
-   Escucha el evento submit del formulario.
+   Las reglas de anticipación y evidencia ya no se
+   validan aquí de forma quemada.
 
-   El tercer parámetro "true" indica que se ejecutará
-   durante la fase de captura del evento.
+   api-app.js consulta business_rules y el backend
+   vuelve a validar la solicitud antes de guardarla.
 
-   Esto ayuda a validar antes de que otros listeners
-   procesen el formulario.
+   Este listener únicamente conserva una validación
+   básica de fecha para SIOP.
 */
+
 document.querySelector('#requestForm')?.addEventListener(
     'submit',
     event => {
 
-        /*
-           Obtiene el tipo seleccionado.
-        */
         const type =
             document.querySelector(
                 'input[name="type"]:checked'
             )?.value;
 
-
-        /*
-           Si NO es una solicitud SIOP,
-           no aplica las validaciones especiales.
-        */
         if (type !== 'siop_validation') {
             return;
         }
 
-
-        /*
-           Obtiene la fecha seleccionada.
-        */
         const date =
-            document.querySelector('#eventDate')?.value;
+            document.querySelector(
+                '#eventDate'
+            )?.value;
 
-
-        /*
-           Cuenta la cantidad de archivos adjuntos.
-
-           Si es 0 significa que no hay evidencia.
-        */
-        const evidence =
-            document.querySelector('#evidence')
-                ?.files.length;
-
-
-        /*
-           Obtiene el motivo escrito por el usuario.
-        */
-        const reason =
-            document.querySelector('#reason')
-                ?.value.trim() || '';
-
-
-        /*
-           Valida que exista una fecha.
-        */
         if (!date) {
 
             event.preventDefault();
@@ -499,58 +593,6 @@ document.querySelector('#requestForm')?.addEventListener(
 
             alert(
                 'Validación SIOP: selecciona la fecha.'
-            );
-
-            return;
-        }
-
-
-        /*
-           Calcula cuántas horas faltan entre:
-           - Fecha actual.
-           - Fecha de la solicitud.
-
-           3600000 representa una hora en milisegundos.
-        */
-        const hoursAhead =
-            (
-                new Date(`${date}T00:00`)
-                - new Date()
-            ) / 3600000;
-
-
-        /*
-           Para SIOP la evidencia es obligatoria.
-        */
-        if (!evidence) {
-
-            /*
-               Evita que el formulario continúe.
-            */
-            event.preventDefault();
-
-            event.stopImmediatePropagation();
-
-            alert(
-                'Validación SIOP: adjunta la evidencia de la conexión del asesor.'
-            );
-
-            return;
-        }
-
-
-        /*
-           Si la solicitud tiene menos de 48 horas
-           y no existe un motivo, bloquea el envío.
-        */
-        if (hoursAhead < 48 && !reason) {
-
-            event.preventDefault();
-
-            event.stopImmediatePropagation();
-
-            alert(
-                'Validación SIOP con menos de 48 horas: explica por qué no se realizó la marcación.'
             );
         }
     },
@@ -1096,18 +1138,11 @@ function renderWfmDashboard() {
 */
 function updateTypeFields() {
 
-    /*
-       Obtiene el tipo seleccionado.
-    */
     const type =
         document.querySelector(
             'input[name="type"]:checked'
         )?.value;
 
-
-    /*
-       Referencias a campos dinámicos.
-    */
     const period =
         document.querySelector(
             '#periodField'
@@ -1123,85 +1158,107 @@ function updateTypeFields() {
             '#exceptionField'
         );
 
-    const currentHours =
+    const employeeField =
         document.querySelector(
-            '.current-hours'
-        );
+            '#employee'
+        )?.closest('.field');
 
-
-    /*
-       Si todavía no existe el bloque
-       "Horario actual del asesor 1",
-       lo crea dinámicamente.
-    */
-    if (!currentHours) {
-
-        document
-            .querySelector('#endTime')
-            ?.closest('.field')
-            ?.insertAdjacentHTML(
-                'afterend',
-                `
-
-                <div
-                    class="current-hours full-field"
-                >
-
-                    <span>
-                        Horario actual del asesor 1
-                    </span>
-
-                    <div>
-
-                        <input
-                            id="currentStart1"
-                            type="time"
-                        >
-
-                        <input
-                            id="currentEnd1"
-                            type="time"
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <!--
-                    Contenedor reservado para
-                    el segundo asesor.
-                -->
-                <div
-                    id="secondAgentField"
-                    class="full-field"
-                ></div>
-                `
-            );
-    }
-
-
-    /*
-       Busca el contenedor del segundo asesor.
-    */
-    const second =
-        document.querySelector(
-            '#secondAgentField'
-        );
-
-
-    /*
-       Busca todos los campos de horario.
-    */
     const timeFields =
         document.querySelectorAll(
             '.time-field'
         );
 
 
+
     /*
-       Si el tipo es "swap" (enroque),
-       se crea el bloque del segundo asesor.
+       El bloque del asesor 1 se mantiene dentro
+       del campo employee.
+    */
+    const advisor1 =
+        employeeField?.querySelector(
+            '.agent-block-primary'
+        );
+
+
+    /*
+       Crea el horario actual del asesor 1
+       dentro de su propia tarjeta.
+    */
+    if (
+        advisor1 &&
+        !advisor1.querySelector('.agent-current-hours')
+    ) {
+
+        advisor1.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="agent-current-hours">
+
+                <span class="current-hours-title">
+                    Horario actual del asesor
+                </span>
+
+                <div class="current-hours-grid">
+
+                    <div class="field">
+                        <span>Desde</span>
+                        <input
+                            id="currentStart1"
+                            type="time"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <span>Hasta</span>
+                        <input
+                            id="currentEnd1"
+                            type="time"
+                        >
+                    </div>
+
+                </div>
+
+            </div>
+            `
+        );
+    }
+
+
+    /*
+       Contenedor del segundo asesor.
+    */
+    let second =
+        document.querySelector(
+            '#secondAgentField'
+        );
+
+
+    /*
+       Si todavía no existe, lo crea debajo
+       del bloque del asesor 1.
+    */
+    if (
+        !second &&
+        employeeField
+    ) {
+
+        second =
+            document.createElement('div');
+
+        second.id =
+            'secondAgentField';
+
+        second.className =
+            'full-field';
+
+        employeeField.appendChild(
+            second
+        );
+    }
+
+
+    /*
+       Genera el asesor 2 únicamente para Enroque.
     */
     if (second) {
 
@@ -1209,15 +1266,16 @@ function updateTypeFields() {
             type === 'swap'
 
                 ? `
-
                 <div class="second-agent-block">
 
-                    <label
-                        class="field second-agent"
-                    >
+                    <span class="agent-block-title">
+                        Asesor 2
+                    </span>
+
+                    <div class="field agent-dni-field">
 
                         <span>
-                            DNI del segundo asesor
+                            DNI del asesor
                         </span>
 
                         <input
@@ -1229,39 +1287,42 @@ function updateTypeFields() {
                         <div
                             id="agentData2"
                             class="agent-data"
+                            aria-live="polite"
                         >
-                            Escribe el DNI del segundo asesor.
+                            Escribe el DNI del asesor.
                         </div>
 
-                    </label>
+                    </div>
 
+                    <div class="agent-current-hours">
 
-                    <div
-                        class="current-hours second-current-hours"
-                    >
-
-                        <span>
-                            Horario actual del asesor 2
+                        <span class="current-hours-title">
+                            Horario actual del asesor
                         </span>
 
-                        <div>
+                        <div class="current-hours-grid">
 
-                            <input
-                                id="currentStart2"
-                                type="time"
-                            >
+                            <div class="field">
+                                <span>Desde</span>
+                                <input
+                                    id="currentStart2"
+                                    type="time"
+                                >
+                            </div>
 
-                            <input
-                                id="currentEnd2"
-                                type="time"
-                            >
+                            <div class="field">
+                                <span>Hasta</span>
+                                <input
+                                    id="currentEnd2"
+                                    type="time"
+                                >
+                            </div>
 
                         </div>
 
                     </div>
 
                 </div>
-
                 `
 
                 : '';
@@ -1269,9 +1330,143 @@ function updateTypeFields() {
 
 
     /*
-       Determina en qué tipos se debe mostrar
-       el horario actual.
+       En Enroque, ambos asesores se presentan
+       como dos tarjetas hermanas.
     */
+    if (
+        employeeField &&
+        type === 'swap' &&
+        second
+    ) {
+
+        let pairGrid =
+            employeeField.querySelector(
+                '#agentPairGrid'
+            );
+
+        if (!pairGrid) {
+
+            pairGrid =
+                document.createElement('div');
+
+            pairGrid.id =
+                'agentPairGrid';
+
+            pairGrid.className =
+                'agent-pair-grid full-field';
+
+            const title =
+                document.createElement('div');
+
+            title.className =
+                'agent-pair-title';
+
+            title.innerHTML =
+                `
+                <span class="dynamic-subtitle">
+                    Asesores involucrados
+                </span>
+                `;
+
+            const cards =
+                document.createElement('div');
+
+            cards.className =
+                'agent-pair-cards';
+
+            pairGrid.appendChild(
+                title
+            );
+
+            pairGrid.appendChild(
+                cards
+            );
+
+            employeeField.appendChild(
+                pairGrid
+            );
+        }
+
+
+        const cards =
+            pairGrid.querySelector(
+                '.agent-pair-cards'
+            );
+
+        const advisor2 =
+            second.querySelector(
+                '.second-agent-block'
+            );
+
+
+        if (cards && advisor1 && advisor2) {
+
+            cards.innerHTML = '';
+
+            cards.appendChild(
+                advisor1
+            );
+
+            cards.appendChild(
+                advisor2
+            );
+        }
+
+        second.innerHTML = '';
+    }
+
+
+    /*
+       Al salir de Enroque, devolvemos el asesor 1
+       a su estructura normal y retiramos el asesor 2.
+    */
+    if (
+        employeeField &&
+        type !== 'swap'
+    ) {
+
+        const pairGrid =
+            employeeField.querySelector(
+                '#agentPairGrid'
+            );
+
+        if (pairGrid) {
+
+            const cards =
+                pairGrid.querySelector(
+                    '.agent-pair-cards'
+                );
+
+            const advisor =
+                cards?.querySelector(
+                    '.agent-block-primary'
+                );
+
+            if (advisor) {
+
+                employeeField.insertBefore(
+                    advisor,
+                    pairGrid
+                );
+            }
+
+            pairGrid.remove();
+        }
+
+        if (second) {
+            second.innerHTML = '';
+        }
+    }
+
+
+    /*
+       Horario actual del asesor 1.
+    */
+    const advisor1Current =
+        employeeField?.querySelector(
+            '.agent-block-primary .agent-current-hours'
+        );
+
     const visibleCurrentHours =
         [
             'schedule_change',
@@ -1280,40 +1475,49 @@ function updateTypeFields() {
         ].includes(type);
 
 
-    /*
-       Muestra u oculta todos los bloques
-       de horarios actuales.
-    */
-    document
-        .querySelectorAll('.current-hours')
-        .forEach(field => {
+    if (advisor1Current) {
 
-            field.style.display =
-                visibleCurrentHours
-                    ? 'block'
-                    : 'none';
-        });
-
-
-    /*
-       El selector de período solo se muestra para:
-       - Cambio de horario.
-       - Enroque.
-    */
-    if (period) {
-
-        period.style.display =
-            type === 'schedule_change'
-                || type === 'swap'
-
+        advisor1Current.style.display =
+            visibleCurrentHours
                 ? 'block'
                 : 'none';
     }
 
 
     /*
-       Para compensados se muestran
-       campos adicionales de fechas.
+       Horario actual del asesor 2.
+    */
+    const advisor2Current =
+        employeeField?.querySelector(
+            '#currentStart2'
+        )?.closest(
+            '.agent-current-hours'
+        );
+
+    if (advisor2Current) {
+
+        advisor2Current.style.display =
+            type === 'swap'
+                ? 'block'
+                : 'none';
+    }
+
+
+    /*
+       Período.
+    */
+    if (period) {
+
+        period.style.display =
+            type === 'schedule_change'
+            || type === 'swap'
+                ? 'block'
+                : 'none';
+    }
+
+
+    /*
+       Fechas adicionales de compensado.
     */
     if (extra) {
 
@@ -1321,36 +1525,53 @@ function updateTypeFields() {
             type === 'comp_time'
 
                 ? `
+                <div class="dynamic-subsection">
 
-                <span class="field-title">
-                    Fechas de compensado
-                    (máximo 5 en total)
-                </span>
+                    <span class="dynamic-subtitle">
+                        Fechas de compensado
+                    </span>
 
-                <div class="date-inputs">
+                    <p class="dynamic-help">
+                        Puedes registrar hasta 5 fechas en una misma solicitud.
+                    </p>
 
-                    <input
-                        type="date"
-                        class="comp-date"
-                    >
+                    <div class="extra-date-list">
 
-                    <input
-                        type="date"
-                        class="comp-date"
-                    >
+                        <label class="field">
+                            <span>Fecha adicional 1</span>
+                            <input
+                                type="date"
+                                class="comp-date"
+                            >
+                        </label>
 
-                    <input
-                        type="date"
-                        class="comp-date"
-                    >
+                        <label class="field">
+                            <span>Fecha adicional 2</span>
+                            <input
+                                type="date"
+                                class="comp-date"
+                            >
+                        </label>
 
-                    <input
-                        type="date"
-                        class="comp-date"
-                    >
+                        <label class="field">
+                            <span>Fecha adicional 3</span>
+                            <input
+                                type="date"
+                                class="comp-date"
+                            >
+                        </label>
+
+                        <label class="field">
+                            <span>Fecha adicional 4</span>
+                            <input
+                                type="date"
+                                class="comp-date"
+                            >
+                        </label>
+
+                    </div>
 
                 </div>
-
                 `
 
                 : '';
@@ -1358,8 +1579,7 @@ function updateTypeFields() {
 
 
     /*
-       El bloque de excepción solamente
-       aparece cuando type === 'exception'.
+       Excepción.
     */
     if (exception) {
 
@@ -1371,9 +1591,7 @@ function updateTypeFields() {
 
 
     /*
-       Los campos de horario nuevo se muestran para:
-       - Horas extra.
-       - Cambio de horario.
+       Horas del nuevo turno.
     */
     timeFields.forEach(field => {
 
@@ -1381,20 +1599,11 @@ function updateTypeFields() {
             type === 'overtime'
             || type === 'schedule_change';
 
-
-        /*
-           Muestra u oculta visualmente.
-        */
         field.style.display =
             visible
                 ? 'block'
                 : 'none';
 
-
-        /*
-           Si el campo está visible,
-           se vuelve obligatorio.
-        */
         const input =
             field.querySelector('input');
 
@@ -1406,7 +1615,7 @@ function updateTypeFields() {
 
 
     /*
-       Mensaje de ayuda para horas extra.
+       Ayuda para horas extra.
     */
     const timeHelp =
         document.querySelector(
@@ -1422,19 +1631,12 @@ function updateTypeFields() {
     }
 
 
-    /*
-       Actualiza iconos generados dinámicamente.
-    */
     if (window.lucide) {
         lucide.createIcons();
     }
 }
 
 
-/*
-   Cada vez que cambia el tipo,
-   actualiza los campos visibles.
-*/
 document
     .querySelectorAll('input[name="type"]')
     .forEach(input => {
@@ -1446,10 +1648,6 @@ document
     });
 
 
-/*
-   Ejecuta una vez para establecer
-   correctamente el estado inicial.
-*/
 updateTypeFields();
 
 
@@ -1687,56 +1885,133 @@ document.addEventListener('change', event => {
 function updateStatusBoard() {
 
     /*
-       Obtiene las solicitudes locales.
+       La fuente principal de solicitudes es la variable
+       global `requests`, cargada desde la API/PostgreSQL.
     */
+
     const stored =
-        JSON.parse(
-            localStorage.getItem(
-                'turnoClaroRequests'
-            ) || '[]'
-        );
-
-
-    /*
-       Recorre los estados del tablero.
-    */
-    [
-        'pending',
-        'approved',
-        'rejected'
-    ].forEach(status => {
-
-
-        /*
-           Busca el contador HTML correspondiente.
-
-           Ejemplo:
-
-           pending
-           ↓
-           #pendingBoard
-        */
-        const target =
-            document.querySelector(
-                `#${status}Board`
+        Array.isArray(window.requests)
+            ? window.requests
+            : (
+                typeof requests !== 'undefined' && Array.isArray(requests)
+                    ? requests
+                    : []
             );
 
 
-        /*
-           Cuenta cuántas solicitudes
-           tienen ese estado.
-        */
-        if (target) {
+    const counters = {
 
-            target.textContent =
-                stored.filter(
-                    item =>
-                        item.status === status
-                ).length;
+        pending:
+            stored.filter(item =>
+                item.status === 'pending'
+            ).length,
+
+        in_review:
+            stored.filter(item =>
+                item.status === 'in_review'
+            ).length,
+
+        observed:
+            stored.filter(item =>
+                item.status === 'observed'
+            ).length,
+
+        approved:
+            stored.filter(item =>
+                item.status === 'approved'
+            ).length,
+
+        rejected:
+            stored.filter(item =>
+                item.status === 'rejected'
+            ).length
+    };
+
+
+    /*
+       Tarjetas principales del dashboard.
+    */
+
+    const totalStat =
+        document.querySelector('#totalStat');
+
+    const pendingStat =
+        document.querySelector('#pendingStat');
+
+    const reviewStat =
+        document.querySelector('#reviewStat');
+
+    const observedStat =
+        document.querySelector('#observedStat');
+
+    const approvedStat =
+        document.querySelector('#approvedStat');
+
+    const rejectedStat =
+        document.querySelector('#rejectedStat');
+
+
+    if (totalStat) {
+        totalStat.textContent = stored.length;
+    }
+
+    if (pendingStat) {
+        pendingStat.textContent = counters.pending;
+    }
+
+    if (reviewStat) {
+        reviewStat.textContent = counters.in_review;
+    }
+
+    if (observedStat) {
+        observedStat.textContent = counters.observed;
+    }
+
+    if (approvedStat) {
+        approvedStat.textContent = counters.approved;
+    }
+
+    if (rejectedStat) {
+        rejectedStat.textContent = counters.rejected;
+    }
+
+
+    /*
+       Tablero compacto de estados.
+    */
+
+    const boardIds = {
+
+        pending:
+            '#pendingBoard',
+
+        in_review:
+            '#in_reviewBoard',
+
+        observed:
+            '#observedBoard',
+
+        approved:
+            '#approvedBoard',
+
+        rejected:
+            '#rejectedBoard'
+    };
+
+
+    Object.entries(boardIds).forEach(
+        ([status, selector]) => {
+
+            const target =
+                document.querySelector(selector);
+
+            if (target) {
+                target.textContent =
+                    counters[status] || 0;
+            }
         }
-    });
+    );
 }
-
 
 /* =========================================================
    18. CONSULTA DEL DNI DEL ASESOR 1
@@ -2688,12 +2963,6 @@ function enhanceRequestDetails() {
         });
 
 
-    /*
-       Renderiza iconos nuevos.
-    */
-    if (window.lucide) {
-        lucide.createIcons();
-    }
 }
 
 
@@ -2761,7 +3030,7 @@ setInterval(() => {
 
     enhanceRequestDetails();
 
-}, 1000);
+}, 5000);
 
 
 /* =========================================================
@@ -3227,29 +3496,219 @@ window.openReview =
 
 
 /*
-   Por defecto indica que no existe evidencia.
+   Evidencias del ticket.
+
+   La evidencia original se encuentra en
+   requests.evidence_path.
+
+   Las evidencias adicionales se consultan
+   desde evidence_uploads mediante request_id.
+*/
+let evidenceItems = [];
+
+
+/*
+   Mantiene visible la evidencia original.
+*/
+if (item.evidence_path) {
+
+    evidenceItems.push({
+        path:
+            item.evidence_path,
+
+        original_name:
+            'Evidencia original',
+
+        created_at:
+            item.created_at || null
+    });
+
+}
+
+
+/*
+   Consulta todas las evidencias asociadas
+   al ticket.
+*/
+try {
+
+    const evidenceResponse =
+        await fetch(
+            `/api/evidence?request_id=${encodeURIComponent(item.id)}`,
+            {
+                method:
+                    'GET',
+
+                credentials:
+                    'same-origin'
+            }
+        );
+
+
+    const evidenceResult =
+        await evidenceResponse.json();
+
+
+    if (
+        evidenceResponse.ok
+        &&
+        Array.isArray(
+            evidenceResult.data
+        )
+    ) {
+
+        evidenceResult.data.forEach(
+            uploaded => {
+
+                /*
+                   Evita duplicar la evidencia
+                   original si ya está asociada.
+                */
+                if (
+                    !evidenceItems.some(
+                        evidence =>
+                            evidence.path ===
+                            uploaded.path
+                    )
+                ) {
+
+                    evidenceItems.push(
+                        uploaded
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+} catch (error) {
+
+    console.warn(
+        'No se pudieron consultar todas las evidencias:',
+        error
+    );
+
+}
+
+
+/*
+   Construye visualmente la lista.
 */
 let evidence =
     'Sin evidencia adjunta';
 
 
-/*
-   Si existe una ruta de evidencia,
-   genera un enlace interno para abrirla.
-*/
-if (item.evidence_path) {
-    const evidenceUrl =
-        `/api/evidence?path=${encodeURIComponent(item.evidence_path)}`;
+if (evidenceItems.length) {
 
     evidence = `
-        <a
-            href="${evidenceUrl}"
-            target="_blank"
-            rel="noopener noreferrer"
-        >
-            Abrir evidencia
-        </a>
+        <div class="evidence-list">
+
+            ${evidenceItems.map(
+                (evidenceItem, index) => {
+
+                    const evidenceUrl =
+                        `/api/evidence?path=${encodeURIComponent(
+                            evidenceItem.path
+                        )}`;
+
+
+                    const fileName =
+                        escapeHtml(
+                            evidenceItem.original_name
+                            ||
+                            `Evidencia ${index + 1}`
+                        );
+
+
+                    let createdAt =
+                        '';
+
+
+                    if (
+                        evidenceItem.created_at
+                    ) {
+
+                        const parsedDate =
+                            new Date(
+                                evidenceItem.created_at
+                            );
+
+
+                        if (
+                            !Number.isNaN(
+                                parsedDate.getTime()
+                            )
+                        ) {
+
+                            createdAt =
+                                new Intl.DateTimeFormat(
+                                    'es-PE',
+                                    {
+                                        day:
+                                            '2-digit',
+
+                                        month:
+                                            '2-digit',
+
+                                        year:
+                                            'numeric',
+
+                                        hour:
+                                            '2-digit',
+
+                                        minute:
+                                            '2-digit'
+                                    }
+                                ).format(
+                                    parsedDate
+                                );
+
+                        }
+
+                    }
+
+
+                    return `
+                        <div class="evidence-item">
+
+                            <div class="evidence-icon">
+                                📎
+                            </div>
+
+                            <div class="evidence-info">
+
+                                <a
+                                    href="${evidenceUrl}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="evidence-link"
+                                >
+                                    ${fileName}
+                                </a>
+
+                                ${
+                                    createdAt
+                                    ? `
+                                        <small>
+                                            ${createdAt}
+                                        </small>
+                                      `
+                                    : ''
+                                }
+
+                            </div>
+
+                        </div>
+                    `;
+
+                }
+            ).join('')}
+
+        </div>
     `;
+
 }
 
 
@@ -3270,30 +3729,14 @@ if (item.evidence_path) {
         */
         if (reviewBody) {
 
-            reviewBody.innerHTML = `
+            /*
+               ui-final.js construye la vista
+               compacta de resumen y conversación.
+               Aquí no se debe pintar contenido
+               duplicado.
+            */
 
-                <p>
-                    <b>Motivo</b>
-                    <br>
-                    ${escapeHtml(item.reason)
-                || 'Sin motivo registrado'
-                }
-                </p>
-
-                <p>
-                    <b>Horas</b>
-                    <br>
-                    ${item.hours
-                || 'No especificadas'
-                }
-                </p>
-
-                <p>
-                    <b>Evidencia</b>
-                    <br>
-                    ${evidence}
-                </p>
-            `;
+            reviewBody.innerHTML = '';
         }
 
 
@@ -3414,10 +3857,19 @@ document
                         .includes(currentRole);
 
                 /*
-                 * La respuesta siempre es obligatoria
-                 * cuando se ejecuta una acción.
+                 * El comentario es obligatorio cuando:
+                 *
+                 * - Supervisor/Coordinador responde una observación.
+                 * - WFM/Superadmin observa, aprueba o rechaza.
+                 *
+                 * Al pasar de Pendiente → En revisión,
+                 * el comentario es opcional.
                  */
-                if (!comment) {
+                const commentRequired =
+                    isRequester
+                        || ['observed', 'approved', 'rejected'].includes(status);
+
+                if (commentRequired && !comment) {
 
                     alert(
                         isRequester
@@ -3651,41 +4103,23 @@ document
     });
 
 /* =========================================================
-   33. CONTROL FINAL DEL MODAL SEGÚN ROL
+   33. CONFIGURAR ACCIONES DEL MODAL SEGÚN ROL
    ========================================================= */
 
 /*
-   Guarda la función original openReview.
+   Esta función NO abre ni construye el modal.
 
-   Esto permite extenderla sin eliminar
-   su funcionamiento original.
+   ui-final.js es responsable de mostrar el detalle.
+   Aquí solamente configuramos:
+
+   - botones disponibles;
+   - comentario;
+   - evidencia;
+   - según rol y estado.
 */
-const originalOpenReview =
-    window.openReview;
+window.configureReviewActions =
+    id => {
 
-
-/*
-   Sobrescribe openReview agregando
-   el control visual de acciones según:
-
-   - Rol.
-   - Estado actual de la solicitud.
-*/
-window.openReview =
-    async id => {
-
-        /*
-           Primero ejecuta la función original.
-
-           Esto carga los datos
-           y abre el modal.
-        */
-        await originalOpenReview(id);
-
-
-        /*
-           Busca nuevamente la solicitud.
-        */
         const item =
             JSON.parse(
                 localStorage.getItem(
@@ -3696,65 +4130,48 @@ window.openReview =
                     request.id === id
             );
 
-
         if (!item) return;
 
-
-        /*
-           Obtiene el rol actual.
-        */
         const currentRole =
             demoRole?.key;
 
+        const currentUserId =
+            localStorage.getItem(
+                'turnoClaroUserId'
+            );
 
-        /*
-           Identifica si el usuario
-           es Supervisor o Coordinador.
-        */
         const isRequester =
             ['coordinator', 'supervisor']
                 .includes(currentRole);
 
+        const isOwner =
+            String(item.requester_id || '') ===
+            String(currentUserId || '');
 
-        /*
-           Identifica si el usuario
-           puede realizar revisión WF.
-        */
+        const canRequesterIntervene =
+            isRequester && isOwner;
+
         const canReview =
             ['wfm', 'superadmin']
                 .includes(currentRole);
 
-
-        /*
-           Estado actual de la solicitud.
-        */
         const status =
             item.status;
 
-
         /*
-           Busca los botones del modal.
+           Ocultar todos los botones primero.
         */
         const actions =
             document.querySelectorAll(
                 '.review-action'
             );
 
-
-        /*
-           Oculta todos los botones
-           antes de determinar cuál corresponde.
-        */
         actions.forEach(button => {
-
-            button.style.display =
-                'none';
+            button.style.display = 'none';
         });
-
 
         /*
            WFM / SUPERADMIN
-           --------------------------------
 
            PENDIENTE
            → En revisión
@@ -3766,9 +4183,7 @@ window.openReview =
         */
         if (canReview) {
 
-            if (
-                status === 'pending'
-            ) {
+            if (status === 'pending') {
 
                 const startButton =
                     document.querySelector(
@@ -3778,13 +4193,13 @@ window.openReview =
                 if (startButton) {
                     startButton.style.display =
                         'inline-block';
+
+                    startButton.textContent =
+                        'En revisión';
                 }
             }
 
-
-            if (
-                status === 'in_review'
-            ) {
+            if (status === 'in_review') {
 
                 [
                     'observed',
@@ -3805,19 +4220,20 @@ window.openReview =
             }
         }
 
-
         /*
            SUPERVISOR / COORDINADOR
-           --------------------------------
 
-           Solo pueden responder
-           una solicitud OBSERVADA.
+           Solo pueden responder una solicitud
+           OBSERVADA que les pertenece.
 
            observed
            → En revisión
+
+           Un coordinador que consulta un ticket ajeno
+           queda en modo solo lectura.
         */
         if (
-            isRequester
+            canRequesterIntervene
             && status === 'observed'
         ) {
 
@@ -3836,44 +4252,30 @@ window.openReview =
             }
         }
 
-
         /*
-           Busca el campo de comentario.
+           Campo de comentario.
         */
         const reviewComment =
             document.querySelector(
                 '#reviewComment'
             );
 
-
-        /*
-           Busca el contenedor del comentario.
-        */
         const reviewCommentField =
             document.querySelector(
                 '#reviewCommentField'
             );
 
-
         /*
-           Busca el campo de evidencia.
+           Campo de evidencia.
+
+           Solo Supervisor/Coordinador propietario
+           al responder una observación.
         */
         const reviewEvidenceField =
             document.querySelector(
                 '#reviewEvidenceField'
             );
 
-
-        /*
-           Configuración del comentario.
-
-           WFM / Superadmin:
-           → visible cuando pueden revisar.
-
-           Supervisor / Coordinador:
-           → visible únicamente al responder
-             una observación.
-        */
         const showComment =
             (
                 canReview
@@ -3883,68 +4285,41 @@ window.openReview =
                 )
             )
             || (
-                isRequester
+                canRequesterIntervene
                 && status === 'observed'
             );
 
-
         if (reviewCommentField) {
-
             reviewCommentField.style.display =
                 showComment
                     ? 'block'
                     : 'none';
         }
 
-
-        /*
-           Cambia el texto del campo
-           según quién esté respondiendo.
-        */
         const reviewCommentLabel =
             document.querySelector(
                 '#reviewCommentLabel'
             );
 
-
         if (reviewCommentLabel) {
-
             reviewCommentLabel.textContent =
-                isRequester
+                canRequesterIntervene
                     ? 'Respuesta a la observación'
                     : 'Respuesta de WFM';
         }
 
-
-        /*
-           Limpia el comentario cuando
-           el campo no corresponde al rol/estado.
-        */
         if (
             reviewComment
             && !showComment
         ) {
-
-            reviewComment.value =
-                '';
+            reviewComment.value = '';
         }
 
-
-        /*
-           La evidencia adicional solamente
-           está disponible para:
-
-           Supervisor / Coordinador
-           +
-           solicitud observada.
-        */
         const showEvidence =
-            isRequester
+            canRequesterIntervene
             && status === 'observed';
 
-
         if (reviewEvidenceField) {
-
             reviewEvidenceField.style.display =
                 showEvidence
                     ? 'block'

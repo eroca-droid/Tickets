@@ -112,17 +112,40 @@
                     </div><span class="date-badge" id="todayLabel"></span>
                 </div>
                 <div class="stats-grid">
-                    <article class="stat-card accent-coral"><span>Por revisar</span><strong
-                            id="pendingStat">0</strong><small><i data-lucide="clock-3"></i> Requieren atención</small>
+                    <article class="stat-card accent-blue">
+                        <span>Total solicitudes</span>
+                        <strong id="totalStat">0</strong>
+                        <small><i data-lucide="layers"></i> Todas las solicitudes</small>
                     </article>
-                    <article class="stat-card accent-blue"><span>Aprobadas este mes</span><strong
-                            id="approvedStat">0</strong><small><i data-lucide="check-circle-2"></i> Flujo
-                            saludable</small></article>
-                    <article class="stat-card accent-yellow"><span>Excepciones</span><strong
-                            id="exceptionStat">0</strong><small><i data-lucide="triangle-alert"></i> Revisión
-                            especial</small></article>
-                    <article class="stat-card accent-green"><span>Horas solicitadas</span><strong
-                            id="hoursStat">0h</strong><small><i data-lucide="timer"></i> En el periodo actual</small>
+
+                    <article class="stat-card accent-coral">
+                        <span>Pendientes</span>
+                        <strong id="pendingStat">0</strong>
+                        <small><i data-lucide="clock-3"></i> Requieren atención</small>
+                    </article>
+
+                    <article class="stat-card accent-yellow">
+                        <span>En revisión</span>
+                        <strong id="reviewStat">0</strong>
+                        <small><i data-lucide="search"></i> En proceso de revisión</small>
+                    </article>
+
+                    <article class="stat-card accent-yellow">
+                        <span>Observados</span>
+                        <strong id="observedStat">0</strong>
+                        <small><i data-lucide="message-square"></i> Requieren corrección</small>
+                    </article>
+
+                    <article class="stat-card accent-green">
+                        <span>Aprobados</span>
+                        <strong id="approvedStat">0</strong>
+                        <small><i data-lucide="check-circle-2"></i> Solicitudes aprobadas</small>
+                    </article>
+
+                    <article class="stat-card accent-coral">
+                        <span>Rechazados</span>
+                        <strong id="rejectedStat">0</strong>
+                        <small><i data-lucide="x-circle"></i> Solicitudes rechazadas</small>
                     </article>
                 </div>
                 <div class="content-grid">
@@ -245,13 +268,15 @@
                         </div>
                         <div class="form-section"><span class="section-label">02 / Detalle</span>
                             <div class="field-grid"><label class="field"><span>Fecha del evento</span><input type="date"
-                                        id="eventDate" required></label><label class="field"><span>Empleado
-                                        involucrado</span><select id="employee">
+                                        id="eventDate" required></label><div class="field employee-field" id="employee">
+                                    <span>Empleado involucrado</span>
+                                    <select>
                                         <option>Laura Méndez</option>
                                         <option>Andrés Ríos</option>
                                         <option>Camila Torres</option>
                                         <option>Diego Silva</option>
-                                    </select></label><label class="field time-field"><span>Desde</span><input
+                                    </select>
+                                </div><label class="field time-field"><span>Desde</span><input
                                         type="time" id="startTime"></label><label class="field time-field"><span>Hasta
                                         (nuevo turno)</span><input type="time" id="endTime"></label><label
                                     class="field full-field"><span>Motivo o
@@ -417,9 +442,9 @@
     <script src="vendor/lucide.js?v=4"></script>
     <script src="api-client.js?v=2"></script>
     <script src="app.js?v=2"></script>
-    <script src="enhancements.js?v=9"></script>
+    <script src="enhancements.js?v=10"></script>
     <script src="api-app.js?v=7"></script>
-    <script src="ui-final.js?v=4"></script>
+    <script src="ui-final.js?v=6"></script>
 </body>
 
 </html>

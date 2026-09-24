@@ -579,7 +579,7 @@ h3 {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 13px;
 }
 
@@ -635,6 +635,29 @@ h3 {
 .stat-card small svg {
     width: 12px;
 }
+
+/* =========================================================
+   DASHBOARD KPI - RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 .accent-coral {
     border-top-color: var(--danger);
@@ -2762,4 +2785,1198 @@ tbody tr:last-child td {
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
     }
+}
+
+
+/* =========================================================
+   DETALLE WFM — HORARIOS Y EVIDENCIAS
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   COMPARACIÓN DE HORARIOS
+   --------------------------------------------------------- */
+
+.schedule-comparison {
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        34px
+        minmax(0, 1fr);
+
+    gap: 8px;
+
+    margin-top: 10px;
+
+}
+
+
+.schedule-column {
+
+    border: 1px solid var(--line);
+
+    border-radius: 8px;
+
+    padding: 12px;
+
+    background: #ffffff;
+
+}
+
+
+.schedule-column.current {
+
+    background: #f7fafb;
+
+}
+
+
+.schedule-column.requested {
+
+    background: #f5fbf8;
+
+}
+
+
+.schedule-column-title {
+
+    font-size: 9px;
+
+    font-weight: 800;
+
+    letter-spacing: .7px;
+
+    text-transform: uppercase;
+
+    color: var(--entel-dark);
+
+    margin-bottom: 10px;
+
+}
+
+
+.schedule-agent {
+
+    padding: 8px 0;
+
+    border-top: 1px solid var(--line);
+
+}
+
+
+.schedule-agent:first-of-type {
+
+    border-top: 0;
+
+}
+
+
+.schedule-agent-name {
+
+    display: block;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    color: var(--muted);
+
+    margin-bottom: 4px;
+
+}
+
+
+.schedule-agent-hours {
+
+    font-size: 16px;
+
+    font-weight: 800;
+
+    letter-spacing: .3px;
+
+    color: var(--entel-dark);
+
+}
+
+
+.schedule-arrow {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 18px;
+
+    font-weight: 800;
+
+    color: var(--entel-dark);
+
+}
+
+
+/* ---------------------------------------------------------
+   LISTA DE EVIDENCIAS
+   --------------------------------------------------------- */
+
+.evidence-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+    margin-top: 8px;
+
+}
+
+
+.evidence-item {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--line);
+
+    border-radius: 7px;
+
+    background: #ffffff;
+
+}
+
+
+.evidence-icon {
+
+    width: 28px;
+
+    height: 28px;
+
+    flex: 0 0 28px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 6px;
+
+    background: var(--info-bg);
+
+    font-size: 14px;
+
+}
+
+
+.evidence-info {
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+}
+
+
+.evidence-link {
+
+    color: var(--entel-dark);
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    word-break: break-word;
+
+}
+
+
+.evidence-link:hover {
+
+    text-decoration: underline;
+
+}
+
+
+.evidence-info small {
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+}
+
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+
+@media (max-width: 700px) {
+
+    .schedule-comparison {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .schedule-arrow {
+
+        min-height: 20px;
+
+        transform: rotate(90deg);
+
+    }
+
+}
+
+/* =========================================================
+   CONVERSACIÓN / TRAZABILIDAD
+   ========================================================= */
+
+.conversation-section {
+    margin-top: 14px;
+}
+
+.conversation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.conversation-item {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 12px;
+    background: #ffffff;
+}
+
+.conversation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.conversation-user {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.conversation-user strong {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--entel-dark);
+}
+
+.conversation-user span {
+    font-size: 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 700;
+}
+
+.conversation-header time {
+    flex: 0 0 auto;
+    font-size: 8px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.conversation-message {
+    margin-top: 9px;
+    padding: 9px 10px;
+    border-radius: 7px;
+    background: #f7fafb;
+    color: var(--text);
+    font-size: 10px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.conversation-status {
+    margin-top: 7px;
+    font-size: 8px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.conversation-empty {
+    padding: 12px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 9px;
+    text-align: center;
+}
+
+@media (max-width: 700px) {
+
+    .conversation-header {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .conversation-header time {
+        white-space: normal;
+    }
+
+}
+
+
+/* =========================================================
+   CREATION FORM — REDISEÑO WFM
+   ========================================================= */
+
+#newView .form-layout {
+    max-width: 1180px;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 28px;
+    margin-top: 32px;
+}
+
+#newView .form-intro {
+    position: sticky;
+    top: 28px;
+    align-self: start;
+}
+
+#newView .form-intro h2 {
+    font-size: 24px;
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+    margin-top: 9px;
+}
+
+#newView .form-intro p {
+    font-size: 11px;
+    line-height: 1.65;
+    color: var(--muted);
+    max-width: 190px;
+}
+
+#newView .flow {
+    margin-top: 34px;
+    width: 190px;
+}
+
+#newView .flow small {
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+
+/* ---------- CONTENEDOR PRINCIPAL ---------- */
+
+#newView .request-form {
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+
+/* ---------- SECCIONES ---------- */
+
+#newView .form-section {
+    padding: 24px 26px 25px;
+    margin: 0;
+    border-bottom: 1px solid #e4ecef;
+}
+
+#newView .form-section:last-of-type {
+    border-bottom: 0;
+}
+
+#newView .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 17px;
+    color: var(--entel-blue);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .7px;
+    text-transform: uppercase;
+}
+
+#newView .section-label::before {
+    content: "";
+    width: 22px;
+    height: 3px;
+    border-radius: 4px;
+    background: var(--entel-blue);
+}
+
+
+/* ---------- TIPOS DE SOLICITUD ---------- */
+
+#newView .type-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+#newView .type-picker label {
+    cursor: pointer;
+}
+
+#newView .type-picker label span {
+    min-height: 96px;
+    padding: 15px;
+    border-radius: 9px;
+    border: 1px solid #dce7ea;
+    background: #fbfcfd;
+    box-shadow: none;
+}
+
+#newView .type-picker label span:hover {
+    transform: translateY(-1px);
+    border-color: #b8d4df;
+    background: #f8fcfd;
+    box-shadow: 0 4px 12px rgba(0, 60, 80, .06);
+}
+
+#newView .type-picker label input:checked + span {
+    border-color: var(--entel-blue);
+    background: #f0f9fc;
+    box-shadow: inset 0 -3px var(--entel-blue), 0 4px 12px rgba(0, 60, 80, .07);
+}
+
+#newView .type-picker svg {
+    width: 19px;
+    height: 19px;
+    margin-bottom: 12px;
+}
+
+#newView .type-picker b {
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+#newView .type-picker small {
+    font-size: 9px;
+    line-height: 1.4;
+    margin-top: 5px;
+}
+
+
+/* ---------- CAMPOS ---------- */
+
+#newView .field-grid {
+    gap: 16px;
+}
+
+#newView .field > span {
+    font-size: 10px;
+    margin-bottom: 7px;
+    color: #33474f;
+}
+
+#newView .field input,
+#newView .field select,
+#newView .field textarea {
+    min-height: 38px;
+    border-radius: 7px;
+    border: 1px solid #d5e1e5;
+    background: #fff;
+    padding: 9px 11px;
+    font-size: 11px;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+#newView .field textarea {
+    min-height: 88px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+#newView .field input:hover,
+#newView .field select:hover,
+#newView .field textarea:hover {
+    border-color: #b8cbd1;
+}
+
+#newView .field input:focus,
+#newView .field select:focus,
+#newView .field textarea:focus {
+    border-color: var(--entel-blue);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(0, 114, 172, .08);
+}
+
+
+/* ---------- DNI / INFORMACIÓN DEL ASESOR ---------- */
+
+#newView .agent-data {
+    min-height: 38px;
+    margin-top: 7px;
+    padding: 9px 11px;
+    border-radius: 7px;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+#newView .agent-data strong {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+#newView .agent-data.valid {
+    border-color: #a8d2c5;
+}
+
+#newView .agent-data.invalid {
+    border-color: #e5aaa6;
+}
+
+
+/* ---------- HORARIO ACTUAL ---------- */
+
+#newView .current-hours {
+    margin-top: 14px;
+    padding: 15px;
+    border: 1px solid #e2eaed;
+    border-radius: 8px;
+    background: #f7fafb;
+}
+
+#newView .current-hours > span,
+#newView .sub-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    color: #5b7078;
+}
+
+#newView .current-hours > div {
+    gap: 10px;
+}
+
+#newView .current-hours input {
+    background: #fff;
+}
+
+
+/* ---------- SEGUNDO ASESOR ---------- */
+
+#newView #secondAgentField {
+    padding: 15px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #fafcfc;
+}
+
+#newView #secondAgentField > span {
+    color: var(--entel-blue);
+}
+
+
+/* ---------- EXCEPCIÓN ---------- */
+
+#newView #exceptionField {
+    padding: 16px;
+    border: 1px solid #e1eaed;
+    border-radius: 8px;
+    background: #fafcfc;
+}
+
+#newView #exceptionField > span:first-child {
+    color: var(--entel-blue);
+}
+
+#newView #exceptionSupervisorField {
+    padding-top: 2px;
+}
+
+
+/* ---------- FECHAS ADICIONALES ---------- */
+
+#newView .date-list {
+    padding: 14px;
+    border: 1px solid #e1eaed;
+    border-radius: 8px;
+    background: #fafcfc;
+}
+
+#newView .date-inputs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+#newView .date-inputs input {
+    min-height: 37px;
+    padding: 8px 9px;
+    border-radius: 7px;
+    font-size: 10px;
+}
+
+
+/* ---------- EVIDENCIA ---------- */
+
+#newView .file-drop {
+    min-height: 52px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border-color: #b9cdd4;
+    background: #f9fbfc;
+    font-size: 10px;
+}
+
+#newView .file-drop svg {
+    width: 17px;
+    height: 17px;
+}
+
+#newView .file-drop:hover {
+    border-color: var(--entel-blue);
+    background: #f3fafc;
+}
+
+
+/* ---------- AYUDA / POLÍTICA ---------- */
+
+#newView .time-help {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #f2f8fa;
+}
+
+#newView .policy-alert {
+    margin-top: 18px;
+    padding: 12px 13px;
+    border-radius: 8px;
+    font-size: 9px;
+}
+
+
+/* ---------- PIE DEL FORMULARIO ---------- */
+
+#newView .form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 26px;
+    border-top: 1px solid #e4ecef;
+    background: #fbfcfd;
+}
+
+#newView .form-footer > span {
+    line-height: 1.45;
+}
+
+#newView .form-footer .primary-button {
+    min-width: 165px;
+    margin: 0;
+    border-radius: 7px;
+}
+
+
+/* ---------- CAMPOS OCULTOS DINÁMICOS ---------- */
+
+#newView .field[style*="display: none"],
+#newView #exceptionField[style*="display: none"],
+#newView #secondAgentField[style*="display: none"] {
+    margin: 0;
+}
+
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 900px) {
+    #newView .form-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    #newView .form-intro {
+        position: static;
+    }
+
+    #newView .form-intro p {
+        max-width: 500px;
+    }
+
+    #newView .flow {
+        margin-top: 20px;
+    }
+}
+
+@media (max-width: 700px) {
+    #newView .type-picker {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #newView .form-section {
+        padding: 20px 17px;
+    }
+
+    #newView .form-footer {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 17px;
+    }
+
+    #newView .form-footer .primary-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 500px) {
+    #newView .type-picker {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #newView .type-picker label span {
+        min-height: 78px;
+    }
+
+    #newView .date-inputs {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+
+
+/* =========================================================
+   HORARIOS ACTUALES — CAMPOS UNIFICADOS
+   ========================================================= */
+
+#newView .current-hours {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #f8fafb;
+}
+
+#newView .current-hours-title {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .45px;
+    text-transform: uppercase;
+    color: #536a73;
+}
+
+#newView .current-hours-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+#newView .current-hours-grid .field {
+    margin: 0;
+}
+
+#newView .current-hours-grid .field > span {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #33474f;
+}
+
+#newView .current-hours-grid .field input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #d5e1e5;
+    border-radius: 7px;
+    background: #fff;
+    padding: 9px 11px;
+    font-size: 11px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+#newView .current-hours-grid .field input:hover {
+    border-color: #b8cbd1;
+}
+
+#newView .current-hours-grid .field input:focus {
+    border-color: var(--entel-blue);
+    box-shadow: 0 0 0 3px rgba(0, 114, 172, .08);
+}
+
+
+/* Segundo asesor */
+
+#newView .second-current-hours {
+    margin-top: 16px;
+}
+
+
+/* En pantallas pequeñas */
+
+@media (max-width: 650px) {
+    #newView .current-hours-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+
+/* =========================================================
+   FORMULARIO DINAMICO — BLOQUES POR TIPO
+   ========================================================= */
+
+#newView .dynamic-subsection {
+    margin-top: 16px;
+}
+
+#newView .dynamic-subtitle {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .55px;
+    text-transform: uppercase;
+    color: #536a73;
+}
+
+#newView .dynamic-help {
+    margin: -2px 0 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #71848b;
+}
+
+
+/* =========================================================
+   SEGUNDO ASESOR
+   ========================================================= */
+
+#newView .second-agent-block {
+    margin-top: 16px;
+}
+
+#newView .second-agent-block > .dynamic-subsection {
+    margin-top: 0;
+}
+
+
+/* =========================================================
+   FECHAS DE COMPENSADO
+   ========================================================= */
+
+#newView .extra-date-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+#newView .extra-date-list .field {
+    margin: 0;
+}
+
+
+/* =========================================================
+   EXCEPCION
+   ========================================================= */
+
+#newView #exceptionField {
+    padding: 18px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #f8fafb;
+}
+
+#newView #exceptionField > span:first-child {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .55px;
+    text-transform: uppercase;
+    color: #536a73;
+}
+
+#newView #exceptionField .sub-label {
+    display: block;
+    margin: 14px 0 7px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #71848b;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 650px) {
+
+    #newView .extra-date-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+}
+
+
+/* =========================================================
+   ASESORES INVOLUCRADOS
+   ========================================================= */
+
+#newView .agent-block {
+    padding: 18px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #f8fafb;
+}
+
+#newView .agent-block-title {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .55px;
+    text-transform: uppercase;
+    color: #536a73;
+}
+
+#newView .agent-dni-field {
+    margin: 0;
+}
+
+#newView .agent-dni-field > span {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #536a73;
+}
+
+#newView .agent-dni-field input {
+    width: 100%;
+}
+
+
+/* =========================================================
+   ENROQUE — DOS ASESORES
+   ========================================================= */
+
+#newView #secondAgentField {
+    margin-top: 16px;
+}
+
+#newView .second-agent-block {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 0;
+    padding: 0;
+}
+
+#newView .second-agent-block .dynamic-subtitle,
+#newView .second-agent-block .dynamic-help {
+    grid-column: 1 / -1;
+}
+
+#newView .second-agent-block .second-agent {
+    margin: 0;
+    padding: 18px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #f8fafb;
+}
+
+#newView .second-agent-block .second-current-hours {
+    margin: 0;
+}
+
+
+/* =========================================================
+   CUANDO HAY DOS ASESORES, EL ASESOR 1 Y 2 SE ALINEAN
+   ========================================================= */
+
+#newView:has(.second-agent-block) .agent-block-primary {
+    width: 100%;
+}
+
+@media (min-width: 851px) {
+
+    #newView .second-agent-block {
+        align-items: start;
+    }
+
+    #newView .second-agent-block .second-agent,
+    #newView .second-agent-block .second-current-hours {
+        min-width: 0;
+    }
+
+}
+
+@media (max-width: 850px) {
+
+    #newView .second-agent-block {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #newView .second-agent-block .dynamic-subtitle,
+    #newView .second-agent-block .dynamic-help {
+        grid-column: auto;
+    }
+
+}
+
+
+/* =========================================================
+   AJUSTE FINAL — TARJETAS DE ASESORES
+   ========================================================= */
+
+/* Contenedor general de los dos asesores */
+#newView #agentPairGrid {
+    width: 100%;
+    margin: 0;
+}
+
+#newView #agentPairGrid .agent-pair-title {
+    margin-bottom: 12px;
+}
+
+#newView #agentPairGrid .agent-pair-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+/* Ambas tarjetas deben tener exactamente la misma estructura */
+#newView #agentPairGrid .agent-block-primary,
+#newView #agentPairGrid .second-agent-block {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 18px;
+    border: 1px solid #dfe9ec;
+    border-radius: 8px;
+    background: #f8fafb;
+    box-sizing: border-box;
+}
+
+/* Evita que el bloque del segundo asesor vuelva a dividirse
+   en columnas internas */
+#newView #agentPairGrid .second-agent-block {
+    display: block;
+}
+
+/* DNI */
+#newView #agentPairGrid .agent-dni-field {
+    width: 100%;
+    margin: 0;
+}
+
+#newView #agentPairGrid .agent-dni-field input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Resultado de dotación */
+#newView #agentPairGrid .agent-data {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Horario dentro de la misma tarjeta */
+#newView #agentPairGrid .agent-current-hours {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #dfe9ec;
+    box-sizing: border-box;
+}
+
+/* Título del horario */
+#newView #agentPairGrid .current-hours-title {
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* Desde / Hasta juntos dentro de cada tarjeta */
+#newView #agentPairGrid .current-hours-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+}
+
+#newView #agentPairGrid .current-hours-grid .field {
+    margin: 0;
+    min-width: 0;
+}
+
+#newView #agentPairGrid .current-hours-grid input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Cuando no es enroque, el asesor 1 también conserva
+   una tarjeta ordenada con su horario debajo */
+#newView .agent-block-primary {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#newView .agent-block-primary .agent-current-hours {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #dfe9ec;
+    box-sizing: border-box;
+}
+
+#newView .agent-block-primary .agent-current-hours .current-hours-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+#newView .agent-block-primary .agent-current-hours .field {
+    margin: 0;
+    min-width: 0;
+}
+
+#newView .agent-block-primary .agent-current-hours input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* En pantallas pequeñas, una tarjeta debajo de la otra */
+@media (max-width: 850px) {
+
+    #newView #agentPairGrid .agent-pair-cards {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+}
+
+@media (max-width: 650px) {
+
+    #newView #agentPairGrid .current-hours-grid,
+    #newView .agent-block-primary .agent-current-hours .current-hours-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
 }
