@@ -30,7 +30,7 @@ const config = Object.freeze({
     publicDir: path.join(rootDir, 'public'),
     uploadDir: process.env.UPLOAD_DIR || path.join(rootDir, 'storage', 'evidence'),
     maxUploadBytes: positiveInteger(process.env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
-    trustProxy: positiveInteger(process.env.TRUST_PROXY_HOPS, 1)
+    trustProxy: process.env.TRUST_PROXY_HOPS === '0' ? 0 : positiveInteger(process.env.TRUST_PROXY_HOPS, 1)
 });
 
 module.exports = config;

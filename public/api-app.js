@@ -331,10 +331,10 @@ loginForm.addEventListener(
         const { data, error } =
             await apiClient.auth.signInWithPassword({
 
-                email:
+                username:
                     document.querySelector(
-                        '#loginEmail'
-                    ).value,
+                        '#loginUsername'
+                    ).value.trim().toLowerCase(),
 
                 password:
                     document.querySelector(
@@ -1215,153 +1215,79 @@ document
 
 
 /* =========================================================
-   EXPORTAR TICKETS
+   REPORTES WFM
    ========================================================= */
 
-document
-    .querySelector('#exportTickets')
-    .addEventListener(
-        'click',
-        async () => {
+const openReportsButton = document.querySelector('#openReports');
+const reportsPanel = document.querySelector('#reportsPanel');
 
-            const {
-                data: { user }
-            } =
-                await apiClient.auth.getUser();
+if (openReportsButton && reportsPanel) {
+    openReportsButton.addEventListener('click', () => {
+        reportsPanel.hidden = !reportsPanel.hidden;
 
-
-            const profile =
-                await apiClient
-                    .from('profiles')
-                    .select('role')
-                    .eq(
-                        'id',
-                        user.id
-                    )
-                    .single();
-
-
-            if (
-                ![
-                    'wfm',
-                    'management',
-                    'superadmin'
-                ].includes(
-                    profile.data?.role
-                )
-            ) {
-
-                alert(
-                    'Solo WFM o Gerencia pueden descargar los tickets.'
-                );
-
-                return
-            }
-
-
-            const {
-                data,
-                error
-            } =
-                await apiClient
-                    .from('requests')
-                    .select('*')
-                    .order(
-                        'created_at',
-                        {
-                            ascending: false
-                        }
-                    );
-
-
-            if (error) {
-
-                alert(
-                    `No se pudo descargar la base: ${error.message}`
-                );
-
-                return
-            }
-
-
-            const columns = [
-                'id',
-                'type',
-                'status',
-                'event_date',
-                'employee_dni',
-                'employee_dni_2',
-                'employee_name',
-                'employee_job_title',
-                'employee_service',
-                'event_dates',
-                'period_type',
-                'exception_type',
-                'exception_origin',
-                'exception_supervisor_id',
-                'exception_supervisor_name',
-                'hours',
-                'reason',
-                'review_comment',
-                'created_at'
-            ];
-
-            const csvCell = value => {
-                const text = String(value ?? '');
-                const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
-                return `"${safeText.replaceAll('"', '""')}"`;
-            };
-
-
-            const csv = [
-
-                columns.join(','),
-
-                ...(data || []).map(
-                    row =>
-                        columns
-                            .map(
-                                column =>
-                                    csvCell(row[column])
-                            )
-                            .join(',')
-                )
-
-            ].join('\n');
-
-
-            const link =
-                document.createElement(
-                    'a'
-                );
-
-
-            link.href =
-                URL.createObjectURL(
-                    new Blob(
-                        [
-                            `\ufeff${csv}`
-                        ],
-                        {
-                            type:
-                                'text/csv;charset=utf-8;'
-                        }
-                    )
-                );
-
-
-            link.download =
-                `tickets-wfm-entel-${new Date().toISOString().slice(0, 10)}.csv`;
-
-
-            link.click();
-
-            URL.revokeObjectURL(
-                link.href
-            );
+        if (!reportsPanel.hidden) {
+            reportsPanel.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
         }
-    );
+    });
+}
 
+
+
+const downloadReportButton = document.querySelector('#downloadReport');
+
+if (downloadReportButton) {
+    downloadReportButton.addEventListener('click', async () => {
+        const type = document.querySelector('#reportType').value;
+        const from = document.querySelector('#reportFrom').value;
+        const to = document.querySelector('#reportTo').value;
+        const message = document.querySelector('#reportMessage');
+
+        if (!['general', 'exceptions', 'times', 'complete'].includes(type)) {
+            message.textContent = 'Este reporte estará disponible próximamente.';
+            return;
+        }
+
+        if (!from || !to || from > to) {
+            message.textContent = 'Selecciona un rango de fechas válido.';
+            return;
+        }
+
+        downloadReportButton.disabled = true;
+        message.textContent = 'Generando archivo Excel...';
+
+        try {
+            const params = new URLSearchParams({ type, from, to });
+            const response = await fetch('/api/reports/download?' + params, {
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.error || 'No se pudo descargar el reporte.');
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            link.href = url;
+            link.download = (type === 'complete' ? 'exportacion_completa_' : type === 'times' ? 'tiempos_atencion_' : type === 'exceptions' ? 'excepciones_' : 'tickets_generales_') + from + '_' + to + '.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            message.textContent = 'Reporte generado correctamente.';
+        } catch (error) {
+            message.textContent = error.message;
+        } finally {
+            downloadReportButton.disabled = false;
+        }
+    });
+}
 
 initializeAuth().catch(error => {
     console.error(error);

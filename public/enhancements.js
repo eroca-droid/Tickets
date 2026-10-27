@@ -2463,7 +2463,7 @@ const demoRoles = [
         key: 'management',
         name: 'Gerencia',
         person: 'Jorge Pérez',
-        canReview: false
+        canReview: true
     },
 
     {
@@ -2792,20 +2792,20 @@ function applyDemoRole() {
 
 
     /* -----------------------------------------------------
-       BOTÓN EXPORTAR
+       BOTÓN REPORTES
        -----------------------------------------------------
 
        Solo roles con capacidad de revisión
-       pueden exportar solicitudes.
+       pueden descargar reportes.
     */
-    const exportButton =
+    const reportsButton =
         document.querySelector(
-            '#exportTickets'
+            '#openReports'
         );
 
-    if (exportButton) {
+    if (reportsButton) {
 
-        exportButton.style.display =
+        reportsButton.style.display =
             demoRole.canReview
                 ? 'flex'
                 : 'none';

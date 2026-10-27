@@ -16,3 +16,7 @@ profiles_production.sql
 compose.test.yaml
 dotacion_production.sql
 profiles_production.sql
+
+# Respaldos locales del desarrollo
+*.backup-*
+*.bak-*

@@ -30,9 +30,9 @@
             <div class="brand"><img class="brand-logo" src="logo-entel.png" alt="ENTEL"><span>Sistemas de tickets<br>WFM
                     ENTEL</span></div><span class="eyebrow">Acceso seguro</span>
             <h1>Ingresa a tu operación</h1>
-            <p>Usa el correo y la contraseña asignados por el administrador.</p>
-            <form id="loginForm"><label class="field"><span>Correo electrónico</span><input type="email" id="loginEmail"
-                        autocomplete="email" required></label><label class="field"><span>Contraseña</span><span
+            <p>Usa tu nombre de usuario y la contraseña asignados por el administrador.</p>
+            <form id="loginForm"><label class="field"><span>Usuario</span><input type="text" id="loginUsername"
+                        autocomplete="username" maxlength="320" autocapitalize="none" spellcheck="false" required></label><label class="field"><span>Contraseña</span><span
                         class="password-input-wrap"><input type="password" id="loginPassword"
                             autocomplete="current-password" required><button class="password-visibility" type="button"
                             data-password-target="loginPassword" aria-label="Mostrar contraseña"
@@ -81,6 +81,9 @@
                         class="nav-count" id="navCount">0</span></button>
                 <button class="nav-item" data-view="wf"><i data-lucide="clipboard-check"></i> Vista WFM</button>
                 <button class="nav-item" data-view="new"><i data-lucide="plus-circle"></i> Nueva solicitud</button>
+                <button class="nav-item" data-view="admin" id="adminUsersNav" hidden style="display:none">
+                    <i data-lucide="users"></i> Administración
+                </button>
             </nav>
             <div class="sidebar-bottom">
                 <div class="workspace-note"><i data-lucide="shield-check"></i>
@@ -306,11 +309,51 @@
                         <h2>Vista WFM</h2>
                         <p class="view-subtitle">Revisa el detalle y registra una respuesta.</p>
                     </div>
-                    <div class="wf-actions"><button class="secondary-button" id="exportTickets"><i
-                                data-lucide="download"></i> Descargar tickets</button><button class="primary-button"
+                    <div class="wf-actions"><button class="secondary-button" id="openReports"><i
+                                data-lucide="download"></i> Reportes</button><button class="primary-button"
                             data-view="requests"><i data-lucide="list-filter"></i> Abrir
                             bandeja</button></div>
                 </div>
+
+                <section class="panel reports-panel" id="reportsPanel" hidden>
+                    <div class="panel-heading">
+                        <div>
+                            <span class="eyebrow">Reportería WFM</span>
+                            <h3>Descargar reportes</h3>
+                        </div>
+                        <i data-lucide="file-spreadsheet"></i>
+                    </div>
+
+                    <div class="report-filters">
+                        <label class="field">
+                            <span>Tipo de reporte</span>
+                            <select id="reportType">
+                                <option value="general">Tickets generales</option>
+                                <option value="exceptions">Excepciones</option>
+                                <option value="times">Tiempos de atención</option>
+                                <option value="complete">Exportación completa</option>
+                            </select>
+                        </label>
+
+                        <label class="field">
+                            <span>Desde</span>
+                            <input type="date" id="reportFrom">
+                        </label>
+
+                        <label class="field">
+                            <span>Hasta</span>
+                            <input type="date" id="reportTo">
+                        </label>
+
+                        <div class="report-actions">
+                            <button class="primary-button" type="button" id="downloadReport">
+                                <i data-lucide="download"></i> Descargar Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <small id="reportMessage"></small>
+                </section>
                 <div class="wf-grid">
                     <article class="wf-column">
                         <header><span class="column-dot pending-dot"></span><strong>Pendientes</strong><b
@@ -389,6 +432,96 @@
                         configuración</button><small id="staticRulesMessage"></small>
                 </section>
             </section>
+            <section id="adminView" class="view">
+                <div class="welcome-row">
+                    <div>
+                        <h2>Administración de usuarios</h2>
+                        <p>Gestiona accesos, roles y cuentas del portal WFM.</p>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+                        <input id="adminUserSearch" type="search"
+                            placeholder="Buscar por nombre o correo"
+                            aria-label="Buscar usuarios">
+                        <select id="adminRoleFilter" aria-label="Filtrar por rol">
+                            <option value="">Todos los roles</option>
+                            <option value="coordinator">Coordinador</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="wfm">WFM</option>
+                            <option value="management">Jefatura</option>
+                            <option value="superadmin">Superadmin</option>
+                        </select>
+                        <select id="adminStatusFilter" aria-label="Filtrar por estado">
+                            <option value="">Todos los estados</option>
+                            <option value="active">Activos</option>
+                            <option value="inactive">Inactivos</option>
+                        </select>
+                        <button class="primary-button" id="adminCreateUser" type="button">
+                            <i data-lucide="user-plus"></i> Nuevo usuario
+                        </button>
+                    </div>
+
+
+<div id="adminUserFormPanel" hidden style="display:none; margin-bottom:20px; padding:20px; border:1px solid #d5dce5; border-radius:12px">
+  <h3>Nuevo usuario</h3>
+  <form id="adminUserForm">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:16px">
+      <label>Nombre completo
+        <input id="adminNewName" type="text" minlength="3" maxlength="200" required autocomplete="name">
+      </label>
+      <label>Correo electrónico
+        <input id="adminNewEmail" type="email" maxlength="320" required autocomplete="off">
+      </label>
+      <label>Rol
+        <select id="adminNewRole" required>
+          <option value="">Seleccionar rol</option>
+          <option value="coordinator">Coordinador</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="wfm">WFM</option>
+          <option value="management">Jefatura</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+      </label>
+      <label>Área
+        <input id="adminNewDepartment" type="text" maxlength="200">
+      </label>
+      <label id="adminCoordinatorField" hidden style="display:none">Coordinador asignado
+        <select id="adminNewCoordinator">
+          <option value="">Seleccionar coordinador</option>
+        </select>
+      </label>
+      <label>Contraseña temporal
+        <input id="adminNewPassword" type="password" minlength="10" maxlength="200" required autocomplete="new-password">
+      </label>
+    </div>
+    <p style="margin-top:12px">El usuario deberá cambiar su contraseña en el primer ingreso.</p>
+    <p id="adminUserFormMessage" role="status"></p>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button type="submit" class="primary-button" id="adminSaveUser">Guardar usuario</button>
+      <button type="button" id="adminCancelUser">Cancelar</button>
+    </div>
+  </form>
+</div>
+
+<p id="adminUsersMessage" role="status">Cargando usuarios...</p>
+                    <div style="overflow-x:auto">
+                        <table style="width:100%;text-align:left">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
         </main>
     </div>
     <div class="review-modal" id="reviewModal">
@@ -445,6 +578,21 @@
     <script src="enhancements.js?v=10"></script>
     <script src="api-app.js?v=7"></script>
     <script src="ui-final.js?v=6"></script>
+    <!-- Resultado del restablecimiento de contraseña -->
+<dialog id="adminPasswordDialog" style="max-width:480px;width:90%;padding:24px;border:1px solid #d5dce5;border-radius:12px">
+  <h3>Contraseña temporal generada</h3>
+  <p>La contraseña se mostrará solo en esta ventana. Entrégala al usuario por un canal seguro.</p>
+  <p><strong>Usuario:</strong> <span id="adminPasswordUser"></span></p>
+  <label for="adminTemporaryPassword">Contraseña temporal</label>
+  <input id="adminTemporaryPassword" type="text" readonly autocomplete="off" spellcheck="false" style="width:100%;margin-top:8px">
+  <p>El usuario deberá cambiarla al iniciar sesión.</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+    <button type="button" id="adminCopyPassword">Copiar contraseña</button>
+    <button type="button" id="adminClosePassword">Cerrar</button>
+  </div>
+</dialog>
+
+<script src="admin-users.js?v=1"></script>
 </body>
 
 </html>

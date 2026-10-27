@@ -136,6 +136,9 @@ create table evidence_uploads (
     created_at timestamptz not null default now()
 );
 
+create unique index profiles_username_unique_idx
+on profiles (lower(split_part(email::text, '@', 1)));
+
 create index profiles_coordinator_active_idx on profiles (coordinator_id, full_name) where active;
 create index dotacion_active_name_idx on dotacion (full_name) where active;
 create index requests_created_at_idx on requests (created_at desc);

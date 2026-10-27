@@ -209,6 +209,12 @@ function errorMessage(error) {
     return 'Ocurrió un error interno. Intenta nuevamente.';
 }
 
+const { generateGeneralReport } = require('./reports');
+const { generateExceptionsReport } = require('./reports-exceptions');
+const { generateTimesReport } = require('./reports-times');
+const { generateCompleteReport } = require('./reports-complete');
+const { registerAdminUsers } = require('./admin-users');
+
 function createApp({ pool, transaction }) {
     const app = express();
     const authenticate = authMiddleware(pool);
@@ -244,6 +250,16 @@ function createApp({ pool, transaction }) {
     app.use(express.json({ limit: '1mb' }));
     app.use('/api', csrfGuard);
 
+    // Administración de usuarios: acceso exclusivo Superadmin
+    registerAdminUsers(app, {
+        pool,
+        transaction,
+        authenticate,
+        requireCompletedPasswordChange,
+        requireRole,
+        ApiError
+    });
+
     app.get('/healthz', async (_request, response, next) => {
         try {
             await pool.query('select 1');
@@ -253,27 +269,47 @@ function createApp({ pool, transaction }) {
         }
     });
 
-    const loginLimiter = rateLimit({
+    // Protección general por IP contra intentos masivos.
+    const loginIpLimiter = rateLimit({
         windowMs: 15 * 60 * 1000,
-        limit: 1000,
+        limit: 100,
+        skipSuccessfulRequests: true,
         standardHeaders: 'draft-8',
         legacyHeaders: false,
-        message: { error: 'Demasiados intentos. Espera 15 minutos antes de intentar de nuevo.' }
+        message: { error: 'Demasiados intentos desde esta conexión. Espera 15 minutos.' }
     });
 
-    app.post('/api/auth/login', loginLimiter, async (request, response) => {
-        const email = cleanText(request.body?.email, 320, '')?.toLowerCase();
+    // Protección individual por correo, independiente de la IP.
+    const loginAccountLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 10,
+        keyGenerator: (request) => {
+            const username = String(request.body?.username || '').trim().toLowerCase();
+            return username || 'usuario-vacio';
+        },
+        skipSuccessfulRequests: true,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        message: { error: 'Demasiados intentos para esta cuenta. Espera 15 minutos.' }
+    });
+
+    app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (request, response) => {
+        const username = cleanText(request.body?.username, 320, '')?.toLowerCase();
         const password = String(request.body?.password || '');
-        if (!email || !password) throw new ApiError(400, 'Correo y contraseña son obligatorios.');
+        if (!username || username.includes('@') || !password) {
+            throw new ApiError(400, 'Ingresa tu usuario sin dominio y tu contraseña.');
+        }
 
         const result = await pool.query(
             `select id, email, full_name, role, password_hash, password_change_required
-             from profiles where email = $1 and active = true`,
-            [email]
+             from profiles
+             where lower(split_part(email, '@', 1)) = $1
+               and active = true`,
+            [username]
         );
         const user = result.rows[0];
         if (!user?.password_hash || !(await verifyPassword(password, user.password_hash))) {
-            throw new ApiError(401, 'Correo o contraseña incorrectos.');
+            throw new ApiError(401, 'Usuario o contraseña incorrectos.');
         }
 
         const token = createSessionToken();
@@ -302,6 +338,7 @@ function createApp({ pool, transaction }) {
                 user: {
                     id: request.user.id,
                     email: request.user.email,
+                    role: request.user.role,
                     password_change_required: request.user.password_change_required
                 },
                 session: { expires_in: config.sessionHours * 60 * 60 }
@@ -338,6 +375,51 @@ function createApp({ pool, transaction }) {
     });
 
     app.use(['/api/data', '/api/evidence', '/api/request-events'], authenticate, requireCompletedPasswordChange);
+
+    app.get(
+        '/api/reports/download',
+        authenticate,
+        requireCompletedPasswordChange,
+        requireRole('wfm', 'management', 'superadmin'),
+        async (request, response) => {
+            const { type, from, to } = request.query;
+            const validDate = value =>
+                typeof value === 'string' &&
+                /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+                !Number.isNaN(Date.parse(value)) &&
+                new Date(value).toISOString().slice(0, 10) === value;
+
+            if (!['general', 'exceptions', 'times', 'complete'].includes(type)) {
+                throw new ApiError(400, 'Tipo de reporte no disponible.');
+            }
+
+            if (!validDate(from) || !validDate(to) || from > to) {
+                throw new ApiError(400, 'Rango de fechas no válido.');
+            }
+
+            const { buffer } = type === 'complete'
+                ? await generateCompleteReport(pool, from, to)
+                : type === 'times'
+                ? await generateTimesReport(pool, from, to)
+                : type === 'exceptions'
+                    ? await generateExceptionsReport(pool, from, to)
+                    : await generateGeneralReport(pool, from, to);
+
+            response.set({
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': type === 'complete'
+                    ? 'attachment; filename="exportacion_completa.xlsx"'
+                    : type === 'times'
+                    ? 'attachment; filename="tiempos_atencion.xlsx"'
+                    : type === 'exceptions'
+                        ? 'attachment; filename="excepciones.xlsx"'
+                        : 'attachment; filename="tickets_generales.xlsx"',
+                'Cache-Control': 'private, no-store'
+            });
+
+            response.send(Buffer.from(buffer));
+        }
+    );
 
     app.get('/api/data/:table', async (request, response) => {
         const { table } = request.params;
@@ -1213,6 +1295,13 @@ app.get('/api/request-events', async (request, response) => {
 
     app.use((_request, response) => response.status(404).json({ error: 'Ruta no encontrada.' }));
     app.use((error, _request, response, _next) => {
+        if (error.code === '23505'
+            && error.constraint === 'profiles_username_unique_idx') {
+            return response.status(409).json({
+                error: 'Este nombre de usuario ya está registrado. Utiliza otro usuario.'
+            });
+        }
+
         if (error instanceof multer.MulterError) {
             const message = error.code === 'LIMIT_FILE_SIZE'
                 ? `El archivo supera el límite de ${Math.round(config.maxUploadBytes / 1024 / 1024)} MB.`
